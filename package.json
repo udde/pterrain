@@ -1,0 +1,27 @@
+{
+  "name": "procedural-terrain",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "browserify": {
+    "transform": [
+      "browserify-shader"
+    ]
+  },
+  "devDependencies": {
+    "browser-sync": "^2.11.0",
+    "browserify": "^13.0.0",
+    "browserify-shader": "^0.1.2",
+    "gulp": "^3.9.0",
+    "gulp-concat": "^2.6.0",
+    "mathjs": "^2.6.0",
+    "three": "^0.73.0",
+    "three-orbit-controls": "^72.0.0",
+    "vinyl-source-stream": "^1.1.0"
+  }
+}
