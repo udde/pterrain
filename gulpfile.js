@@ -31,7 +31,7 @@ gulp.task('serve',function() {
 gulp.task('concat',function(){
     return gulp.src([
         './src/js/three_lib/_three.min.js',
-        './src/js/three_lib/CopyShader.js',
+        // './src/js/three_lib/CopyShader.js',
         './src/js/three_lib/**/*',
         './src/js/terrainHeightDataGeneration.js',
         './src/js/main.js'
