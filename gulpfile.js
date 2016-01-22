@@ -33,6 +33,7 @@ gulp.task('concat',function(){
         './src/js/three_lib/_three.min.js',
         './src/js/three_lib/CopyShader.js',
         './src/js/three_lib/**/*',
+        './src/js/terrainHeightDataGeneration.js',
         './src/js/main.js'
     ])
     .pipe(concat('concat.js'))

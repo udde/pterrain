@@ -1,9 +1,8 @@
 var math = require('mathjs');
-var THREE = require('three');
 
-module.exports = init;
+// module.exports = init;
 
-function init() {
+function terrainGeometry() {
    
     var geometry = new THREE.BufferGeometry();
     
@@ -28,7 +27,7 @@ function init() {
 }
 
 function generateTerrainData(resX, resY) {
-   
+    
     var gridResX = resX, gridResY = resY;
     gridResX = 100, gridResY = 100;
     var xScale = 16, yScale = 16;
@@ -150,8 +149,8 @@ function getHeight(x ,y, getMax)
     var d = math.sqrt( x * x  +  y * y );
     // height = 5*el;
 
-    var f = 0.125 / 128 ;
-    var s = 2.0 * 16;
+    var f = 0.125 / (128 * 1.0) ;
+    var s = 2.0 * 16 / 1.0;
     var height = s * simplex.noise2D(f*x,f*y);
     var max = s;
     s = s/2;
@@ -180,6 +179,7 @@ function getHeight(x ,y, getMax)
     var hl = 80.0;
     if(height > hl)
         height += 0.6*(height - hl)
+    
     // hl = 2000.0;
     // if(height > hl)
         // height += 0.8*(height - hl)

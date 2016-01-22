@@ -4,6 +4,7 @@ vec3 mod289(vec3 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec4 mod289(ve
 
 
 uniform vec3 uCameraPos;
+uniform vec3 uLightPos;
 
 varying vec3 vPos;
 varying vec3 vNormal;
@@ -34,7 +35,7 @@ void main() {
 
     float ka = 0.3;
 
-    vec3 li = normalize(vec3(0.0,12.0,10.0));
+    vec3 li = normalize(uLightPos);
     float kd = 0.5 * clamp(dot(n, li), 0.0, 1.0);
 
     vec3 r = normalize(2.0*n*(dot(n,li)) - li);

@@ -39,7 +39,7 @@ function init(){
    
     light = new THREE.DirectionalLight(0xdfebff, 1.75);
     light.position.set(0.0, 1000.0, 200.0);
-    scene.add(light);
+    // scene.add(light);
     
     renderer = new THREE.WebGLRenderer();
     renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
@@ -71,16 +71,33 @@ function init(){
     var geometry = new THREE.BoxGeometry( 100, 100, 100 );
     var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
     var cube = new THREE.Mesh( geometry, material );
-    scene.add( cube );
+    // scene.add( cube );
     //BOX
     var geometry = new THREE.BoxGeometry( 120, 120, 120 );
     var material = new THREE.MeshBasicMaterial( {color: 0xff00ff} );
     var cube = new THREE.Mesh( geometry, material );
-    cube.position.x += 200; cube.position.y += 100; cube.position.z -= 100;
-    scene.add( cube );
+    cube.position.x += 200; cube.position.y -= 60; cube.position.z -= 100;
+    // scene.add( cube );
+    
+    //TERRAIN
+    var meterial = new THREE.ShaderMaterial( {
+        uniforms: {
+            uCameraPos: {type: "v3", value: camera.position},
+            uLightPos: {type: "v3", value: light.position},
+        },
+        vertexShader: groundShaders.vs,
+        fragmentShader: groundShaders.fs,
+        // side: THREE.DoubleSide
+    } );
+    var terrain = terrainGeometry();//require('../js/terrainHeightDataGeneration.js')(THREE)
+    
+    terrainMesh = new THREE.Mesh(terrain, meterial);
+    terrainMesh.position.y -= 50;
+    scene.add(terrainMesh); 
+    
     
     //PLANE 
-    var geometry = new THREE.PlaneGeometry( 600, 600, 1 , 1 );
+    var geometry = new THREE.PlaneGeometry( 1600, 1600, 1 , 1 );
     var material = new THREE.MeshBasicMaterial( {color: 0xaaaaaa, side: THREE.DoubleSide} );
     plane = new THREE.Mesh( geometry, material );
     plane.rotation.x = -Math.PI/2;
@@ -88,16 +105,23 @@ function init(){
     plane.position.y = -80;
     // scene.add( plane );
     
-    var x = 10;
+    
     groundMirror = new THREE.Mirror( renderer, camera, { clipBias: 0.003,
 	textureWidth: SCREEN_WIDTH, textureHeight: SCREEN_HEIGHT, color: 0x777777 } );
-	groundMirror.material.transparent = true;
-	var mirrorMesh = new THREE.Mesh( geometry, groundMirror.material );
+	
+    //feed THREE.Mirror with custom shaders to look more like water than a normal mirror!
+    groundMirror.material.vertexShader = require("../shaders/mirrorVertexShader.glsl")();
+    groundMirror.material.fragmentShader = require("../shaders/mirrorFragmentShader.glsl")();
+    groundMirror.material.transparent = true;
+    // groundMirror.material.uniforms["uLight"] = {type: "v3", value: light.dire} ;
+    groundMirror.material.uniforms["uCamera"] = {type: "v3", value: camera.position} ; 
+    
+    var mirrorMesh = new THREE.Mesh( geometry, groundMirror.material );
 	mirrorMesh.add( groundMirror );
 	mirrorMesh.rotateX( - Math.PI / 2 );
-    mirrorMesh.position.y = -80;
+    mirrorMesh.position.y = -100;
 	scene.add( mirrorMesh );
-// 
+
     
     // renderer.autoClear = false;
     
@@ -134,15 +158,3 @@ function render(){
 
 
 
-// //TERRAIN
-//     var meterial = new THREE.ShaderMaterial( {
-//         uniforms: {
-//             uCameraPos: {type: "v3", value: camera.position}
-//         },
-//         vertexShader: groundShaders.vs,
-//         fragmentShader: groundShaders.fs,
-//         side: THREE.DoubleSide
-//     } );
-//     var terrain = require('../js/terrainHeightDataGeneration.js')()
-//     terrainMesh = new THREE.Mesh(terrain, meterial);
-//     scene.add(terrainMesh); 
