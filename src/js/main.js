@@ -38,7 +38,7 @@ function init(){
     mirrorTarget = new THREE.WebGLRenderTarget(SCREEN_WIDTH, SCREEN_HEIGHT,  { format: THREE.RGBFormat});
    
     light = new THREE.DirectionalLight(0xdfebff, 1.75);
-    light.position.set(0.0, 0.0, 300.0);
+    light.position.set(0.0, 100.0, 500.0);
     // scene.add(light);
     
     
@@ -112,14 +112,14 @@ function init(){
     
     
     composer = new THREE.EffectComposer( renderer );
-    var pass1 = new THREE.RenderPass(scene, camera);
+    var render = new THREE.RenderPass(scene, camera);
     var ts = new THREE.ShaderPass(THREE.CopyShader);
     var fxaa = new THREE.ShaderPass(THREE.FXAAShader);
     fxaa.uniforms.resolution.value.set(1 / (SCREEN_WIDTH), 1 / (SCREEN_HEIGHT));
     ts.renderToScreen = true;
     
     
-    composer.addPass(pass1);
+    composer.addPass(render);
     composer.addPass(fxaa);
     composer.addPass(ts);
 }   

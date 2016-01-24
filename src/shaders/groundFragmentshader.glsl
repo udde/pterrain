@@ -76,7 +76,7 @@ void main() {
         float x = (h-lower)/range;
         c = mix(grass, dirt, x);
         ka = 0.18;
-        ks = 0.1 * clamp(pow(dot(r,v),8.0), 0.0, 1.0);
+        ks = 0.0 * clamp(pow(dot(r,v),8.0), 0.0, 1.0);
     }
     
     lower = upper;
