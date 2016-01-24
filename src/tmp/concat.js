@@ -1537,6 +1537,10 @@ THREE.OrbitControls = function ( object, domElement ) {
 
 THREE.OrbitControls.prototype = Object.create( THREE.EventDispatcher.prototype );
 
+/*
+* Simple example, illustrating the desired lod triangle-normal-morph effect 
+* (here simply moving vertices backwards with automated flatshading, mimicing the effect)
+*/
 var SCREEN_WIDTH = window.innerWidth ;
 var SCREEN_HEIGHT = window.innerHeight ;
 var SCREEN_RATIO = SCREEN_WIDTH/SCREEN_HEIGHT ;
@@ -1544,7 +1548,6 @@ var HALF_WIDTH = SCREEN_WIDTH / 2 ;
 var HALF_HEIGHT = SCREEN_HEIGHT / 2 ;
 
 var camera, scene, renderer, container, light, controls, composer, meshes, x;
-
 
 init();
 render();
