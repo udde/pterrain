@@ -1001,133 +1001,6 @@ THREE.CopyShader = {
 };
 
 /**
- * @author alteredq / http://alteredqualia.com/
- *
- * Dot screen shader
- * based on glfx.js sepia shader
- * https://github.com/evanw/glfx.js
- */
-
-THREE.DotScreenShader = {
-
-	uniforms: {
-
-		"tDiffuse": { type: "t", value: null },
-		"tSize":    { type: "v2", value: new THREE.Vector2( 256, 256 ) },
-		"center":   { type: "v2", value: new THREE.Vector2( 0.5, 0.5 ) },
-		"angle":    { type: "f", value: 1.57 },
-		"scale":    { type: "f", value: 1.0 }
-
-	},
-
-	vertexShader: [
-
-		"varying vec2 vUv;",
-
-		"void main() {",
-
-			"vUv = uv;",
-			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
-
-		"}"
-
-	].join( "\n" ),
-
-	fragmentShader: [
-
-		"uniform vec2 center;",
-		"uniform float angle;",
-		"uniform float scale;",
-		"uniform vec2 tSize;",
-
-		"uniform sampler2D tDiffuse;",
-
-		"varying vec2 vUv;",
-
-		"float pattern() {",
-
-			"float s = sin( angle ), c = cos( angle );",
-
-			"vec2 tex = vUv * tSize - center;",
-			"vec2 point = vec2( c * tex.x - s * tex.y, s * tex.x + c * tex.y ) * scale;",
-
-			"return ( sin( point.x ) * sin( point.y ) ) * 4.0;",
-
-		"}",
-
-		"void main() {",
-
-			"vec4 color = texture2D( tDiffuse, vUv );",
-
-			"float average = ( color.r + color.g + color.b ) / 3.0;",
-
-			"gl_FragColor = vec4( vec3( average * 10.0 - 5.0 + pattern() ), color.a );",
-
-		"}"
-
-	].join( "\n" )
-
-};
-
-/**
- * @author felixturner / http://airtight.cc/
- *
- * Mirror Shader
- * Copies half the input to the other half
- *
- * side: side of input to mirror (0 = left, 1 = right, 2 = top, 3 = bottom)
- */
-
-THREE.MirrorShader = {
-
-	uniforms: {
-
-		"tDiffuse": { type: "t", value: null },
-		"side":     { type: "i", value: 1 }
-
-	},
-
-	vertexShader: [
-
-		"varying vec2 vUv;",
-
-		"void main() {",
-
-			"vUv = uv;",
-			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
-
-		"}"
-
-	].join( "\n" ),
-
-	fragmentShader: [
-
-		"uniform sampler2D tDiffuse;",
-		"uniform int side;",
-		
-		"varying vec2 vUv;",
-
-		"void main() {",
-
-			"vec2 p = vUv;",
-			"if (side == 0){",
-				"if (p.x > 0.5) p.x = 1.0 - p.x;",
-			"}else if (side == 1){",
-				"if (p.x < 0.5) p.x = 1.0 - p.x;",
-			"}else if (side == 2){",
-				"if (p.y < 0.5) p.y = 1.0 - p.y;",
-			"}else if (side == 3){",
-				"if (p.y > 0.5) p.y = 1.0 - p.y;",
-			"} ",
-			"vec4 color = texture2D(tDiffuse, p);",
-			"gl_FragColor = color;",
-
-		"}"
-
-	].join( "\n" )
-
-};
-/**
  * @author qiao / https://github.com/qiao
  * @author mrdoob / http://mrdoob.com
  * @author alteredq / http://alteredqualia.com/
@@ -1710,625 +1583,6 @@ THREE.OrbitControls = function ( object, domElement ) {
 };
 
 THREE.OrbitControls.prototype = Object.create( THREE.EventDispatcher.prototype );
-
-/**
- * @author miibond
- * Generate a texture that represents the luminosity of the current scene, adapted over time
- * to simulate the optic nerve responding to the amount of light it is receiving.
- * Based on a GDC2007 presentation by Wolfgang Engel titled "Post-Processing Pipeline"
- *
- * Full-screen tone-mapping shader based on http://www.graphics.cornell.edu/~jaf/publications/sig02_paper.pdf
- */
-
-THREE.AdaptiveToneMappingPass = function ( adaptive, resolution ) {
-
-	this.resolution = ( resolution !== undefined ) ? resolution : 256;
-	this.needsInit = true;
-	this.adaptive = adaptive !== undefined ? !! adaptive : true;
-
-	this.luminanceRT = null;
-	this.previousLuminanceRT = null;
-	this.currentLuminanceRT = null;
-
-	if ( THREE.CopyShader === undefined )
-		console.error( "THREE.AdaptiveToneMappingPass relies on THREE.CopyShader" );
-
-	var copyShader = THREE.CopyShader;
-
-	this.copyUniforms = THREE.UniformsUtils.clone( copyShader.uniforms );
-
-	this.materialCopy = new THREE.ShaderMaterial( {
-
-		uniforms: this.copyUniforms,
-		vertexShader: copyShader.vertexShader,
-		fragmentShader: copyShader.fragmentShader,
-		blending: THREE.NoBlending,
-		depthTest: false
-
-	} );
-
-	if ( THREE.LuminosityShader === undefined )
-		console.error( "THREE.AdaptiveToneMappingPass relies on THREE.LuminosityShader" );
-
-	this.materialLuminance = new THREE.ShaderMaterial( {
-
-		uniforms: THREE.UniformsUtils.clone( THREE.LuminosityShader.uniforms ),
-		vertexShader: THREE.LuminosityShader.vertexShader,
-		fragmentShader: THREE.LuminosityShader.fragmentShader,
-		blending: THREE.NoBlending,
-	} );
-
-	this.adaptLuminanceShader = {
-		defines: {
-			"MIP_LEVEL_1X1" : ( Math.log( this.resolution ) / Math.log( 2.0 ) ).toFixed( 1 ),
-		},
-		uniforms: {
-			"lastLum": { type: "t", value: null },
-			"currentLum": { type: "t", value: null },
-			"delta": { type: 'f', value: 0.016 },
-			"tau": { type: 'f', value: 1.0 }
-		},
-		vertexShader: [
-			"varying vec2 vUv;",
-
-			"void main() {",
-
-				"vUv = uv;",
-				"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
-
-			"}"
-		].join( '\n' ),
-		fragmentShader: [
-			"varying vec2 vUv;",
-
-			"uniform sampler2D lastLum;",
-			"uniform sampler2D currentLum;",
-			"uniform float delta;",
-			"uniform float tau;",
-
-			"void main() {",
-
-				"vec4 lastLum = texture2D( lastLum, vUv, MIP_LEVEL_1X1 );",
-				"vec4 currentLum = texture2D( currentLum, vUv, MIP_LEVEL_1X1 );",
-
-				"float fLastLum = lastLum.r;",
-				"float fCurrentLum = currentLum.r;",
-
-				//The adaption seems to work better in extreme lighting differences
-				//if the input luminance is squared.
-				"fCurrentLum *= fCurrentLum;",
-
-				// Adapt the luminance using Pattanaik's technique
-				"float fAdaptedLum = fLastLum + (fCurrentLum - fLastLum) * (1.0 - exp(-delta * tau));",
-				// "fAdaptedLum = sqrt(fAdaptedLum);",
-				"gl_FragColor = vec4( vec3( fAdaptedLum ), 1.0 );",
-			"}",
-		].join( '\n' )
-	};
-
-	this.materialAdaptiveLum = new THREE.ShaderMaterial( {
-
-		uniforms: THREE.UniformsUtils.clone( this.adaptLuminanceShader.uniforms ),
-		vertexShader: this.adaptLuminanceShader.vertexShader,
-		fragmentShader: this.adaptLuminanceShader.fragmentShader,
-		defines: this.adaptLuminanceShader.defines,
-		blending: THREE.NoBlending
-	} );
-
-	if ( THREE.ToneMapShader === undefined )
-		console.error( "THREE.AdaptiveToneMappingPass relies on THREE.ToneMapShader" );
-
-	this.materialToneMap = new THREE.ShaderMaterial( {
-
-		uniforms: THREE.UniformsUtils.clone( THREE.ToneMapShader.uniforms ),
-		vertexShader: THREE.ToneMapShader.vertexShader,
-		fragmentShader: THREE.ToneMapShader.fragmentShader,
-		blending: THREE.NoBlending
-	} );
-
-	this.enabled = true;
-	this.needsSwap = true;
-	this.clear = false;
-
-	this.camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
-	this.scene  = new THREE.Scene();
-
-	this.quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), null );
-	this.scene.add( this.quad );
-
-};
-
-THREE.AdaptiveToneMappingPass.prototype = {
-
-	render: function ( renderer, writeBuffer, readBuffer, delta, maskActive ) {
-
-		if ( this.needsInit ) {
-
-			this.reset( renderer );
-
-			this.luminanceRT.texture.type = readBuffer.texture.type;
-			this.previousLuminanceRT.texture.type = readBuffer.texture.type;
-			this.currentLuminanceRT.texture.type = readBuffer.texture.type;
-			this.needsInit = false;
-
-		}
-
-		if ( this.adaptive ) {
-
-			//Render the luminance of the current scene into a render target with mipmapping enabled
-			this.quad.material = this.materialLuminance;
-			this.materialLuminance.uniforms.tDiffuse.value = readBuffer;
-			renderer.render( this.scene, this.camera, this.currentLuminanceRT );
-
-			//Use the new luminance values, the previous luminance and the frame delta to
-			//adapt the luminance over time.
-			this.quad.material = this.materialAdaptiveLum;
-			this.materialAdaptiveLum.uniforms.delta.value = delta;
-			this.materialAdaptiveLum.uniforms.lastLum.value = this.previousLuminanceRT;
-			this.materialAdaptiveLum.uniforms.currentLum.value = this.currentLuminanceRT;
-			renderer.render( this.scene, this.camera, this.luminanceRT );
-
-			//Copy the new adapted luminance value so that it can be used by the next frame.
-			this.quad.material = this.materialCopy;
-			this.copyUniforms.tDiffuse.value = this.luminanceRT;
-			renderer.render( this.scene, this.camera, this.previousLuminanceRT );
-
-		}
-
-		this.quad.material = this.materialToneMap;
-		this.materialToneMap.uniforms.tDiffuse.value = readBuffer;
-		renderer.render( this.scene, this.camera, writeBuffer, this.clear );
-
-	},
-
-	reset: function( renderer ) {
-
-		// render targets
-		if ( this.luminanceRT ) {
-
-			this.luminanceRT.dispose();
-
-		}
-		if ( this.currentLuminanceRT ) {
-
-			this.currentLuminanceRT.dispose();
-
-		}
-		if ( this.previousLuminanceRT ) {
-
-			this.previousLuminanceRT.dispose();
-
-		}
-		var pars = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat };
-
-		this.luminanceRT = new THREE.WebGLRenderTarget( this.resolution, this.resolution, pars );
-		this.luminanceRT.texture.generateMipmaps = false;
-
-		this.previousLuminanceRT = new THREE.WebGLRenderTarget( this.resolution, this.resolution, pars );
-		this.previousLuminanceRT.texture.generateMipmaps = false;
-
-		// We only need mipmapping for the current luminosity because we want a down-sampled version to sample in our adaptive shader
-		pars.minFilter = THREE.LinearMipMapLinearFilter;
-		this.currentLuminanceRT = new THREE.WebGLRenderTarget( this.resolution, this.resolution, pars );
-
-		if ( this.adaptive ) {
-
-			this.materialToneMap.defines[ "ADAPTED_LUMINANCE" ] = "";
-			this.materialToneMap.uniforms.luminanceMap.value = this.luminanceRT;
-
-		}
-		//Put something in the adaptive luminance texture so that the scene can render initially
-		this.quad.material = new THREE.MeshBasicMaterial( { color: 0x777777 } );
-		this.materialLuminance.needsUpdate = true;
-		this.materialAdaptiveLum.needsUpdate = true;
-		this.materialToneMap.needsUpdate = true;
-		// renderer.render( this.scene, this.camera, this.luminanceRT );
-		// renderer.render( this.scene, this.camera, this.previousLuminanceRT );
-		// renderer.render( this.scene, this.camera, this.currentLuminanceRT );
-
-	},
-
-	setAdaptive: function( adaptive ) {
-
-		if ( adaptive ) {
-
-			this.adaptive = true;
-			this.materialToneMap.defines[ "ADAPTED_LUMINANCE" ] = "";
-			this.materialToneMap.uniforms.luminanceMap.value = this.luminanceRT;
-
-		} else {
-
-			this.adaptive = false;
-			delete this.materialToneMap.defines[ "ADAPTED_LUMINANCE" ];
-			this.materialToneMap.uniforms.luminanceMap.value = undefined;
-
-		}
-		this.materialToneMap.needsUpdate = true;
-
-	},
-
-	setAdaptionRate: function( rate ) {
-
-		if ( rate ) {
-
-			this.materialAdaptiveLum.uniforms.tau.value = Math.abs( rate );
-
-		}
-
-	},
-
-	setMaxLuminance: function( maxLum ) {
-
-		if ( maxLum ) {
-
-			this.materialToneMap.uniforms.maxLuminance.value = maxLum;
-
-		}
-
-	},
-
-	setAverageLuminance: function( avgLum ) {
-
-		if ( avgLum ) {
-
-			this.materialToneMap.uniforms.averageLuminance.value = avgLum;
-
-		}
-
-	},
-
-	setMiddleGrey: function( middleGrey ) {
-
-		if ( middleGrey ) {
-
-			this.materialToneMap.uniforms.middleGrey.value = middleGrey;
-
-		}
-
-	},
-
-	dispose: function() {
-
-		if ( this.luminanceRT ) {
-
-			this.luminanceRT.dispose();
-
-		}
-		if ( this.previousLuminanceRT ) {
-
-			this.previousLuminanceRT.dispose();
-
-		}
-		if ( this.currentLuminanceRT ) {
-
-			this.currentLuminanceRT.dispose();
-
-		}
-		if ( this.materialLuminance ) {
-
-			this.materialLuminance.dispose();
-
-		}
-		if ( this.materialAdaptiveLum ) {
-
-			this.materialAdaptiveLum.dispose();
-
-		}
-		if ( this.materialCopy ) {
-
-			this.materialCopy.dispose();
-
-		}
-		if ( this.materialToneMap ) {
-
-			this.materialToneMap.dispose();
-
-		}
-
-	}
-
-};
-
-/**
- * @author alteredq / http://alteredqualia.com/
- */
-
-THREE.BloomPass = function ( strength, kernelSize, sigma, resolution ) {
-
-	strength = ( strength !== undefined ) ? strength : 1;
-	kernelSize = ( kernelSize !== undefined ) ? kernelSize : 25;
-	sigma = ( sigma !== undefined ) ? sigma : 4.0;
-	resolution = ( resolution !== undefined ) ? resolution : 256;
-
-	// render targets
-
-	var pars = { minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, format: THREE.RGBFormat };
-
-	this.renderTargetX = new THREE.WebGLRenderTarget( resolution, resolution, pars );
-	this.renderTargetY = new THREE.WebGLRenderTarget( resolution, resolution, pars );
-
-	// copy material
-
-	if ( THREE.CopyShader === undefined )
-		console.error( "THREE.BloomPass relies on THREE.CopyShader" );
-
-	var copyShader = THREE.CopyShader;
-
-	this.copyUniforms = THREE.UniformsUtils.clone( copyShader.uniforms );
-
-	this.copyUniforms[ "opacity" ].value = strength;
-
-	this.materialCopy = new THREE.ShaderMaterial( {
-
-		uniforms: this.copyUniforms,
-		vertexShader: copyShader.vertexShader,
-		fragmentShader: copyShader.fragmentShader,
-		blending: THREE.AdditiveBlending,
-		transparent: true
-
-	} );
-
-	// convolution material
-
-	if ( THREE.ConvolutionShader === undefined )
-		console.error( "THREE.BloomPass relies on THREE.ConvolutionShader" );
-
-	var convolutionShader = THREE.ConvolutionShader;
-
-	this.convolutionUniforms = THREE.UniformsUtils.clone( convolutionShader.uniforms );
-
-	this.convolutionUniforms[ "uImageIncrement" ].value = THREE.BloomPass.blurX;
-	this.convolutionUniforms[ "cKernel" ].value = THREE.ConvolutionShader.buildKernel( sigma );
-
-	this.materialConvolution = new THREE.ShaderMaterial( {
-
-		uniforms: this.convolutionUniforms,
-		vertexShader:  convolutionShader.vertexShader,
-		fragmentShader: convolutionShader.fragmentShader,
-		defines: {
-			"KERNEL_SIZE_FLOAT": kernelSize.toFixed( 1 ),
-			"KERNEL_SIZE_INT": kernelSize.toFixed( 0 )
-		}
-
-	} );
-
-	this.enabled = true;
-	this.needsSwap = false;
-	this.clear = false;
-
-
-	this.camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
-	this.scene  = new THREE.Scene();
-
-	this.quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), null );
-	this.scene.add( this.quad );
-
-};
-
-THREE.BloomPass.prototype = {
-
-	render: function ( renderer, writeBuffer, readBuffer, delta, maskActive ) {
-
-		if ( maskActive ) renderer.context.disable( renderer.context.STENCIL_TEST );
-
-		// Render quad with blured scene into texture (convolution pass 1)
-
-		this.quad.material = this.materialConvolution;
-
-		this.convolutionUniforms[ "tDiffuse" ].value = readBuffer;
-		this.convolutionUniforms[ "uImageIncrement" ].value = THREE.BloomPass.blurX;
-
-		renderer.render( this.scene, this.camera, this.renderTargetX, true );
-
-
-		// Render quad with blured scene into texture (convolution pass 2)
-
-		this.convolutionUniforms[ "tDiffuse" ].value = this.renderTargetX;
-		this.convolutionUniforms[ "uImageIncrement" ].value = THREE.BloomPass.blurY;
-
-		renderer.render( this.scene, this.camera, this.renderTargetY, true );
-
-		// Render original scene with superimposed blur to texture
-
-		this.quad.material = this.materialCopy;
-
-		this.copyUniforms[ "tDiffuse" ].value = this.renderTargetY;
-
-		if ( maskActive ) renderer.context.enable( renderer.context.STENCIL_TEST );
-
-		renderer.render( this.scene, this.camera, readBuffer, this.clear );
-
-	}
-
-};
-
-THREE.BloomPass.blurX = new THREE.Vector2( 0.001953125, 0.0 );
-THREE.BloomPass.blurY = new THREE.Vector2( 0.0, 0.001953125 );
-
-/**
- * Depth-of-field post-process with bokeh shader
- */
-
-
-THREE.BokehPass = function ( scene, camera, params ) {
-
-	this.scene = scene;
-	this.camera = camera;
-
-	var focus = ( params.focus !== undefined ) ? params.focus : 1.0;
-	var aspect = ( params.aspect !== undefined ) ? params.aspect : camera.aspect;
-	var aperture = ( params.aperture !== undefined ) ? params.aperture : 0.025;
-	var maxblur = ( params.maxblur !== undefined ) ? params.maxblur : 1.0;
-
-	// render targets
-
-	var width = params.width || window.innerWidth || 1;
-	var height = params.height || window.innerHeight || 1;
-
-	this.renderTargetColor = new THREE.WebGLRenderTarget( width, height, {
-		minFilter: THREE.LinearFilter,
-		magFilter: THREE.LinearFilter,
-		format: THREE.RGBFormat
-	} );
-
-	this.renderTargetDepth = this.renderTargetColor.clone();
-
-	// depth material
-
-	this.materialDepth = new THREE.MeshDepthMaterial();
-
-	// bokeh material
-
-	if ( THREE.BokehShader === undefined ) {
-
-		console.error( "THREE.BokehPass relies on THREE.BokehShader" );
-
-	}
-	
-	var bokehShader = THREE.BokehShader;
-	var bokehUniforms = THREE.UniformsUtils.clone( bokehShader.uniforms );
-
-	bokehUniforms[ "tDepth" ].value = this.renderTargetDepth;
-
-	bokehUniforms[ "focus" ].value = focus;
-	bokehUniforms[ "aspect" ].value = aspect;
-	bokehUniforms[ "aperture" ].value = aperture;
-	bokehUniforms[ "maxblur" ].value = maxblur;
-
-	this.materialBokeh = new THREE.ShaderMaterial( {
-		uniforms: bokehUniforms,
-		vertexShader: bokehShader.vertexShader,
-		fragmentShader: bokehShader.fragmentShader
-	} );
-
-	this.uniforms = bokehUniforms;
-	this.enabled = true;
-	this.needsSwap = false;
-	this.renderToScreen = false;
-	this.clear = false;
-
-	this.camera2 = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
-	this.scene2  = new THREE.Scene();
-
-	this.quad2 = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), null );
-	this.scene2.add( this.quad2 );
-
-};
-
-THREE.BokehPass.prototype = {
-
-	render: function ( renderer, writeBuffer, readBuffer, delta, maskActive ) {
-
-		this.quad2.material = this.materialBokeh;
-
-		// Render depth into texture
-
-		this.scene.overrideMaterial = this.materialDepth;
-
-		renderer.render( this.scene, this.camera, this.renderTargetDepth, true );
-
-		// Render bokeh composite
-
-		this.uniforms[ "tColor" ].value = readBuffer;
-
-		if ( this.renderToScreen ) {
-
-			renderer.render( this.scene2, this.camera2 );
-
-		} else {
-
-			renderer.render( this.scene2, this.camera2, writeBuffer, this.clear );
-
-		}
-
-		this.scene.overrideMaterial = null;
-
-	}
-
-};
-
-
-/**
- * @author mrdoob / http://mrdoob.com/
- */
-
-THREE.ClearPass = function () {
-
-	this.enabled = true;
-
-};
-
-THREE.ClearPass.prototype = {
-
-	render: function ( renderer, writeBuffer, readBuffer ) {
-
-		renderer.setRenderTarget( readBuffer );
-		renderer.clear();
-
-	}
-
-};
-
-/**
- * @author alteredq / http://alteredqualia.com/
- */
-
-THREE.DotScreenPass = function ( center, angle, scale ) {
-
-	if ( THREE.DotScreenShader === undefined )
-		console.error( "THREE.DotScreenPass relies on THREE.DotScreenShader" );
-
-	var shader = THREE.DotScreenShader;
-
-	this.uniforms = THREE.UniformsUtils.clone( shader.uniforms );
-
-	if ( center !== undefined ) this.uniforms[ "center" ].value.copy( center );
-	if ( angle !== undefined ) this.uniforms[ "angle" ].value = angle;
-	if ( scale !== undefined ) this.uniforms[ "scale" ].value = scale;
-
-	this.material = new THREE.ShaderMaterial( {
-
-		uniforms: this.uniforms,
-		vertexShader: shader.vertexShader,
-		fragmentShader: shader.fragmentShader
-
-	} );
-
-	this.enabled = true;
-	this.renderToScreen = false;
-	this.needsSwap = true;
-
-
-	this.camera = new THREE.OrthographicCamera( - 1, 1, 1, - 1, 0, 1 );
-	this.scene  = new THREE.Scene();
-
-	this.quad = new THREE.Mesh( new THREE.PlaneBufferGeometry( 2, 2 ), null );
-	this.scene.add( this.quad );
-
-};
-
-THREE.DotScreenPass.prototype = {
-
-	render: function ( renderer, writeBuffer, readBuffer, delta ) {
-
-		this.uniforms[ "tDiffuse" ].value = readBuffer;
-		this.uniforms[ "tSize" ].value.set( readBuffer.width, readBuffer.height );
-
-		this.quad.material = this.material;
-
-		if ( this.renderToScreen ) {
-
-			renderer.render( this.scene, this.camera );
-
-		} else {
-
-			renderer.render( this.scene, this.camera, writeBuffer, false );
-
-		}
-
-	}
-
-};
 
 /**
  * @author alteredq / http://alteredqualia.com/
@@ -2952,6 +2206,64 @@ THREE.Mirror.prototype.renderTemp = function () {
 };
 
 /**
+ * @author felixturner / http://airtight.cc/
+ *
+ * Mirror Shader
+ * Copies half the input to the other half
+ *
+ * side: side of input to mirror (0 = left, 1 = right, 2 = top, 3 = bottom)
+ */
+
+THREE.MirrorShader = {
+
+	uniforms: {
+
+		"tDiffuse": { type: "t", value: null },
+		"side":     { type: "i", value: 1 }
+
+	},
+
+	vertexShader: [
+
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vUv = uv;",
+			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+		"}"
+
+	].join( "\n" ),
+
+	fragmentShader: [
+
+		"uniform sampler2D tDiffuse;",
+		"uniform int side;",
+		
+		"varying vec2 vUv;",
+
+		"void main() {",
+
+			"vec2 p = vUv;",
+			"if (side == 0){",
+				"if (p.x > 0.5) p.x = 1.0 - p.x;",
+			"}else if (side == 1){",
+				"if (p.x < 0.5) p.x = 1.0 - p.x;",
+			"}else if (side == 2){",
+				"if (p.y < 0.5) p.y = 1.0 - p.y;",
+			"}else if (side == 3){",
+				"if (p.y > 0.5) p.y = 1.0 - p.y;",
+			"} ",
+			"vec4 color = texture2D(tDiffuse, p);",
+			"gl_FragColor = color;",
+
+		"}"
+
+	].join( "\n" )
+
+};
+/**
  * @author alteredq / http://alteredqualia.com/
  */
 
@@ -3185,19 +2497,20 @@ THREE.TexturePass.prototype = {
 
 };
 
+/*
+* Procedurally generate height data for a "random" terrain using simplex noise
+* return a buffer geometry with 'per triangle attributes' to the vertices
+*/
 var math = require('mathjs');
-
-// module.exports = init;
 
 function terrainGeometry() {
    
     var geometry = new THREE.BufferGeometry();
-    
-    var vertexData = generateTerrainData(100, 100);
+    var vertexData = generateTerrainData(0, 0);
     geometry.addAttribute( 'position', new THREE.BufferAttribute( vertexData.aPositionData, 3 ) );
     geometry.addAttribute( 'normal', new THREE.BufferAttribute( vertexData.aNormalData, 3 ) );
     
-    
+    //stupid way of calculating triangle height max/min values
     var h = Float32Array.from(vertexData.aTriangleHeightData);
     h.sort();
     var hMax = h[h.length-1]; var hMin = h[0];
@@ -3206,9 +2519,7 @@ function terrainGeometry() {
         array[index] /= ( math.abs(hMin) + math.abs(hMax) );
     });
     
-    // debugger;
-    geometry.addAttribute( 'aTriangleHeight', new THREE.BufferAttribute( vertexData.aTriangleHeightData, 1 ) );
-    
+    geometry.addAttribute( 'triangleHeight', new THREE.BufferAttribute( vertexData.aTriangleHeightData, 1 ) );
     
     return geometry;
 }
@@ -3221,18 +2532,13 @@ function generateTerrainData(resX, resY) {
     var offsetX = 0, offsetY = 0;
     var totalSquareSize = 18;
     var totalDataSize = totalSquareSize * gridResX * gridResY;
-    console.log(totalDataSize)
     var nVertices = totalSquareSize * gridResX * gridResY / 3;
     var aPositionData = new Float32Array(totalDataSize);
     var aNormalData = new Float32Array(totalDataSize);
     var aTriangleHeightData = new Float32Array(nVertices);
     var triangleHeightDataPos = 0;
-    var maxHeight = getHeight(1,1,1);
-    // console.log(maxHeight);
     var i = 0;
 
-    // var xh = (gridResX % 2 == 0) ? gridResX / 2 : (gridResX - 1) / 2 ;
-    // var yh = (gridResY % 2 == 0) ? gridResY / 2 : (gridResY - 1) / 2 ;
     var xh = gridResX / 2;
     var yh = gridResY / 2;
     for (var X = -xh; X < xh; X++)
@@ -3254,7 +2560,6 @@ function generateTerrainData(resX, resY) {
         aPositionData[i+7 ] = getHeight(aPositionData[i + 6] + offsetX, aPositionData[i + 8] + offsetY)
 
         var triangleHeight1 = (aPositionData[i+1] + aPositionData[i+4] + aPositionData[i+7]) / 3 ;
-        // console.log((triangleHeight1+1)/2);
 
         var normal1 = math.cross([
             aPositionData[i + 3] - aPositionData[i + 0],
@@ -3280,7 +2585,6 @@ function generateTerrainData(resX, resY) {
 
         var tirangleHeight2 = (aPositionData[i+10] + aPositionData[i+13] + aPositionData[i+16]) / 3;
 
-        // console.log(((tirangleHeight2/11.875) + 1)/2);
         aTriangleHeightData[triangleHeightDataPos + 0] = triangleHeight1;
         aTriangleHeightData[triangleHeightDataPos + 1] = triangleHeight1;
         aTriangleHeightData[triangleHeightDataPos + 2] = triangleHeight1;
@@ -3315,7 +2619,6 @@ function generateTerrainData(resX, resY) {
         }
     }
 
-
     var returnData = {
         aPositionData: aPositionData,
         aNormalData: aNormalData,
@@ -3330,12 +2633,8 @@ function generateTerrainData(resX, resY) {
 var simplexNoise = require('../js/simplexNoiseImproved.js');
 var simplex = new simplexNoise();
 
-function getHeight(x ,y, getMax)
+function getHeight(x ,y)
 {
-    // var height = 1.0 * simplex.noise2D(0.00116*0.4*x, 0.00116*0.9*y);
-    var d = math.sqrt( x * x  +  y * y );
-    // height = 5*el;
-
     var f = 0.125 / (128 * 1.0) ;
     var s = 2.0 * 16 / 0.9;
     var height = s * simplex.noise2D(1.16*f*x,1.0*f*y); //a
@@ -3343,91 +2642,40 @@ function getHeight(x ,y, getMax)
     var d = math.sqrt(x*x + y*y);
     var b = 50*16;
     
-    if(d > b ){
-        
+    if(d > b ){ 
         var dd = 1.0 + (d-b)*0.01;
         height /= math.min(dd, 8); //
     }
     
-    var max = s;
     s = s/2;
     f = f*2;
     height += s * simplex.noise2D(f*x, f*y);
-    max += s;
-    
-    
-    
-    
+
     height =  height > 0.0 ? height * (math.pow(height, 0.5)) : height *0.8;
-    max = max * math.pow(max, 0.5);
     
     for (var i = 0; i < 2; i++) {
         s = s/2;
         f = f*2;
-        max += s;
         height += s * simplex.noise2D(f*x, f*y);
     }
-
-    // if(height > 0.0)
-    //     height *= 1.3;
-    // else
-    //     height *= 1.0;
-    // max *= 1.3;
     
-
+    //boost hills to mountains
     var hl = 80.0;
     if(height > hl)
-        height += 0.6*(height - hl)
+        height += 0.3*(height - hl)
     
-    // hl = 2000.0;
-    // if(height > hl)
-        // height += 0.8*(height - hl)
-        
+    //add depth to and variation/islands/cpaes to water
     var wl = 6.0;
     if(height < -wl)
-        height += 4*(height + wl)
-    // if(height > 6.0)
+        height += 3*(height + wl)
+
     for (var i = 0; i < 3; i++) {
         s = s/1.25;
         f = f*2;
-        max += s;
         height += s * simplex.noise2D(f*x, f*y);
     }
-    // else
-    // for (var i = 0; i < 4; i++) {
-    //     s = s/2;
-    //     f = f*2;
-    //     max += s;
-    //     height += s * simplex.noise2D(f*x, f*y);
-    // }
-    
-    if(getMax)
-        return max;
+      
     return height;
-    // var waterNoise = 0.25 * simplex.noise2D(2.0*x,2.0*y);
-    // waterNoise += 0.125 * simplex.noise2D(4.0*x,4.0*y);
-    // waterNoise += 0.0625 * simplex.noise2D(8.0*x,8.0*y);
-    // waterNoise *= 1.0;
-    // waterNoise = math.min(waterNoise, 0.0);
-    // //
-    // var mountainNoise = 1.0 ; //* snoise(0.002*vec2(0.4*p.x, 0.9*p.y));
-    // // var snow = 0;
-    // //
-    // mountainNoise = height;
-    // height = math.max(-0.3,height);
-    // height = math.min(height, 0.5);
-    // // vh = height;
-    // height = height < 0.5 ? height  :  mountainNoise;// + 0.0 + mountainNoise;
-    // height = height > -0.3 ? height : -1.0 + waterNoise;
-    // mountainNoise = height;
-    // height = math.min(height, 2.0);
-    // // snow = height;
-    // height = height < 2.0 ? height  : mountainNoise;
-    // height *= 1.0;
-    // max*=1;
-    // console.log(max); //11.875
-    // console.log(max);
-    
 }
 
 var SCREEN_WIDTH = window.innerWidth ;
@@ -3436,20 +2684,7 @@ var SCREEN_RATIO = SCREEN_WIDTH/SCREEN_HEIGHT ;
 var HALF_WIDTH = SCREEN_WIDTH / 2 ;
 var HALF_HEIGHT = SCREEN_HEIGHT / 2 ;
 
-var camera, mirrorCamera, mirrorTarget, water, terrainMesh, plane,
-scene, renderer, container, light, controls, composer, groundMirror;
-
-// var THREE = require('three')
-// var OrbitControls = require('three-orbit-controls')(THREE)
-
-var groundShaders = {
-    vs : require('../shaders/groundVertexshader.glsl')(),
-    fs : require('../shaders/groundFragmentshader.glsl')()
-};
-var waterShaders = {
-    vs : require('../shaders/waterVertexshader.glsl')(),
-    fs : require('../shaders/waterFragmentshader.glsl')()
-};
+var camera, scene, renderer, container, light, controls, composer, groundMirror;
 
 init();
 render();
@@ -3457,45 +2692,35 @@ render();
 function init(){
     container = document.createElement('div');
     document.body.appendChild(container);
+    //SCENE / CAMERA
     scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(0xaa0000, 1.2);
-    debugger;
     camera = new THREE.PerspectiveCamera(30, SCREEN_RATIO, 1, 10000);
-    camera.position.set(505, 280, 1400);
+    controls = new THREE.OrbitControls( camera );
     camera.up = new THREE.Vector3(0.0, 1.0, 0.0);
+    camera.position.set(505, 280, 1400);
     camera.lookAt({x: 0, y: 0, z: 0 }); 
     
-    mirrorCamera = camera.clone(camera);
-    // mirrorCamera.projectionMatrix.makeRotationX(Math.PI);
-    mirrorTarget = new THREE.WebGLRenderTarget(SCREEN_WIDTH, SCREEN_HEIGHT,  { format: THREE.RGBFormat});
-   
+    //LIGHT
     light = new THREE.DirectionalLight(0xdfebff, 1.75);
     light.position.set(0.0, 100.0, 500.0);
     // scene.add(light);
     
-    
-    
-    
+    //RENDERER
     renderer = new THREE.WebGLRenderer();
     renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
     renderer.setClearColor( 0x77bbcc );
-    
     container.appendChild(renderer.domElement);
-    controls = new THREE.OrbitControls( camera );
     
-    //WATER
-    var material = new THREE.ShaderMaterial( {
-        uniforms: {
-            uCameraPos: {type: "v3", value: camera.position},
-            uMirror: {type: "t", value: mirrorTarget}
-        },
-        transparent: true,
-        vertexShader: waterShaders.vs,
-        fragmentShader: waterShaders.fs,
-        // depthWrite: false
-    } );
-    
-    
+    //SHADERS
+    var groundShaders = {
+        vs : require('../shaders/groundVertexshader.glsl')(),
+        fs : require('../shaders/groundFragmentshader.glsl')()
+    };
+    var mirrorShaders = {
+        vs : require('../shaders/mirrorVertexShader.glsl')(),
+        fs : require('../shaders/mirrorFragmentShader.glsl')()
+    };
+     
     //TERRAIN
     var meterial = new THREE.ShaderMaterial( {
         uniforms: {
@@ -3504,31 +2729,19 @@ function init(){
         },
         vertexShader: groundShaders.vs,
         fragmentShader: groundShaders.fs,
-        // side: THREE.DoubleSide
     } );
-    var terrain = terrainGeometry();//require('../js/terrainHeightDataGeneration.js')(THREE)
-    
-    terrainMesh = new THREE.Mesh(terrain, meterial);
+    var terrain = terrainGeometry(); //require('../js/terrainHeightDataGeneration.js')(THREE)
+    var terrainMesh = new THREE.Mesh(terrain, meterial);
     terrainMesh.position.y -= 50;
     scene.add(terrainMesh); 
     
-    
-    //PLANE 
-    var geometry = new THREE.PlaneGeometry( 1600, 1600, 1 , 1 );
-    var material = new THREE.MeshBasicMaterial( {color: 0xaaaaaa, side: THREE.DoubleSide} );
-    plane = new THREE.Mesh( geometry, material );
-    plane.rotation.x = -Math.PI/2;
-    // plane.position.z = -1600.0;
-    plane.position.y = -80;
-    // scene.add( plane );
-    
-    
+    //WATER / MIRROR
+    var geometry = new THREE.PlaneGeometry( 6400, 6400, 1 , 1 );
     groundMirror = new THREE.Mirror( renderer, camera, { clipBias: 0.003,
-	textureWidth: SCREEN_WIDTH, textureHeight: SCREEN_HEIGHT, color: 0x777777 } );
-	
-    //feed THREE.Mirror with custom shaders to look more like water than a normal mirror!
-    groundMirror.material.vertexShader = require("../shaders/mirrorVertexShader.glsl")();
-    groundMirror.material.fragmentShader = require("../shaders/mirrorFragmentShader.glsl")();
+	   textureWidth: SCREEN_WIDTH, textureHeight: SCREEN_HEIGHT, color: 0x777777 } );
+    //feed THREE.Mirror with own shaders/uniforms. TODO: make it look more like water...
+    groundMirror.material.vertexShader = mirrorShaders.vs;
+    groundMirror.material.fragmentShader = mirrorShaders.fs;
     groundMirror.material.transparent = true;
     groundMirror.material.uniforms["uLight"] = {type: "v3", value: light.position} ;
     groundMirror.material.uniforms["uCamera"] = {type: "v3", value: camera.position} ; 
@@ -3536,40 +2749,39 @@ function init(){
     var mirrorMesh = new THREE.Mesh( geometry, groundMirror.material );
 	mirrorMesh.add( groundMirror );
 	mirrorMesh.rotateX( - Math.PI / 2 );
-    mirrorMesh.position.y = -113;
+    mirrorMesh.position.y = -93;
 	scene.add( mirrorMesh );
 
-    
-    // renderer.autoClear = false;
-    
-    
+    // MP-RENDERING COMPOSER
     composer = new THREE.EffectComposer( renderer );
-    var render = new THREE.RenderPass(scene, camera);
-    var ts = new THREE.ShaderPass(THREE.CopyShader);
-    var fxaa = new THREE.ShaderPass(THREE.FXAAShader);
-    fxaa.uniforms.resolution.value.set(1 / (SCREEN_WIDTH), 1 / (SCREEN_HEIGHT));
-    ts.renderToScreen = true;
+    var renderPass = new THREE.RenderPass(scene, camera);
+    var fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
+    fxaaPass.uniforms.resolution.value.set(1 / (SCREEN_WIDTH), 1 / (SCREEN_HEIGHT));
+    var toScreen = new THREE.ShaderPass(THREE.CopyShader);
+    toScreen.renderToScreen = true;
     
     
-    composer.addPass(render);
-    composer.addPass(fxaa);
-    composer.addPass(ts);
+    composer.addPass(renderPass);
+    composer.addPass(fxaaPass);
+    composer.addPass(toScreen);
 }   
 
+//RENDER-LOOP
 function render(){
-    
-    console.log(camera.position);
     requestAnimationFrame( render );
     
+    updateStuff();
     groundMirror.render();
     composer.render();
     // renderer.render(scene, camera);
     
-    controls.update();
+   
 }
 
-
-
+function updateStuff(){
+     controls.update(); //
+    
+}
 
 
 
