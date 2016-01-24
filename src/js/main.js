@@ -26,10 +26,10 @@ function init(){
     container = document.createElement('div');
     document.body.appendChild(container);
     scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0xaa0000, 1.2);
+    debugger;
     camera = new THREE.PerspectiveCamera(30, SCREEN_RATIO, 1, 10000);
-    camera.position.x = 0;
-    camera.position.y = 450;
-    camera.position.z = 800;
+    camera.position.set(505, 280, 1400);
     camera.up = new THREE.Vector3(0.0, 1.0, 0.0);
     camera.lookAt({x: 0, y: 0, z: 0 }); 
     
@@ -38,8 +38,11 @@ function init(){
     mirrorTarget = new THREE.WebGLRenderTarget(SCREEN_WIDTH, SCREEN_HEIGHT,  { format: THREE.RGBFormat});
    
     light = new THREE.DirectionalLight(0xdfebff, 1.75);
-    light.position.set(0.0, 1000.0, 200.0);
+    light.position.set(0.0, 0.0, 300.0);
     // scene.add(light);
+    
+    
+    
     
     renderer = new THREE.WebGLRenderer();
     renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
@@ -59,25 +62,7 @@ function init(){
         fragmentShader: waterShaders.fs,
         // depthWrite: false
     } );
-    var geometry = new THREE.PlaneGeometry(1600,1600,100,100);
-    // var material = new THREE.MeshBasicMaterial({ wireframe: true, color: 0x44aaff });
-    water = new THREE.Mesh(geometry, material);
-    water.rotation.x = -Math.PI/2;
-    // water.position.y = 300.0;
-    // water.position.z = -1600.0;
-    // scene.add(water); 
     
-    //BOX
-    var geometry = new THREE.BoxGeometry( 100, 100, 100 );
-    var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
-    var cube = new THREE.Mesh( geometry, material );
-    // scene.add( cube );
-    //BOX
-    var geometry = new THREE.BoxGeometry( 120, 120, 120 );
-    var material = new THREE.MeshBasicMaterial( {color: 0xff00ff} );
-    var cube = new THREE.Mesh( geometry, material );
-    cube.position.x += 200; cube.position.y -= 60; cube.position.z -= 100;
-    // scene.add( cube );
     
     //TERRAIN
     var meterial = new THREE.ShaderMaterial( {
@@ -113,13 +98,13 @@ function init(){
     groundMirror.material.vertexShader = require("../shaders/mirrorVertexShader.glsl")();
     groundMirror.material.fragmentShader = require("../shaders/mirrorFragmentShader.glsl")();
     groundMirror.material.transparent = true;
-    // groundMirror.material.uniforms["uLight"] = {type: "v3", value: light.dire} ;
+    groundMirror.material.uniforms["uLight"] = {type: "v3", value: light.position} ;
     groundMirror.material.uniforms["uCamera"] = {type: "v3", value: camera.position} ; 
     
     var mirrorMesh = new THREE.Mesh( geometry, groundMirror.material );
 	mirrorMesh.add( groundMirror );
 	mirrorMesh.rotateX( - Math.PI / 2 );
-    mirrorMesh.position.y = -100;
+    mirrorMesh.position.y = -113;
 	scene.add( mirrorMesh );
 
     
@@ -129,22 +114,24 @@ function init(){
     composer = new THREE.EffectComposer( renderer );
     var pass1 = new THREE.RenderPass(scene, camera);
     var ts = new THREE.ShaderPass(THREE.CopyShader);
+    var fxaa = new THREE.ShaderPass(THREE.FXAAShader);
+    fxaa.uniforms.resolution.value.set(1 / (SCREEN_WIDTH), 1 / (SCREEN_HEIGHT));
     ts.renderToScreen = true;
+    
+    
     composer.addPass(pass1);
+    composer.addPass(fxaa);
     composer.addPass(ts);
-    
-    
-    var effect = new THREE.ShaderPass(THREE.DotScreenShader);
-    effect.uniforms['scale'].value = 4;
-    // effect.renderToScreen = true;
-    // composer.addPass(effect);
 }   
 
 function render(){
+    
+    console.log(camera.position);
     requestAnimationFrame( render );
     
     groundMirror.render();
     composer.render();
+    // renderer.render(scene, camera);
     
     controls.update();
 }

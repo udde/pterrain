@@ -33,8 +33,8 @@ void main() {
     vec3 white = vec3(227,229,240)/255.0;
     vec3 c = gray;
 
-    float ka = 0.3;
-
+    
+    float ka = 0.2;
     vec3 li = normalize(uLightPos);
     float kd = 0.5 * clamp(dot(n, li), 0.0, 1.0);
 
@@ -59,12 +59,13 @@ void main() {
         c = mix(c,green,x);
         ks = 0.0 * clamp(pow(dot(r,v),8.0), 0.0, 1.0);
     }
-    vec3 grass = snoise(100.0*vec2(h,h)) < 0.0 ? green : green2;
+    vec3 grass = snoise(1000.0*vec2(sin(100.0*h),cos(0.1*h))) < 0.0 ? green : green2;
     vec3 dirt = snoise(1000.0*vec2(h,h)) < 0.0 ? brown : brown2;
     vec3 stone = snoise(1000.0*vec2(h,h)) < 0.0 ? gray : gray2;
     
     if(h > upper && h < grassLevel){
         c = grass;
+        ka = 0.16;
          ks = 0.0 * clamp(pow(dot(r,v),8.0), 0.0, 1.0);
     }
     
@@ -74,6 +75,7 @@ void main() {
         float range = upper - lower;
         float x = (h-lower)/range;
         c = mix(grass, dirt, x);
+        ka = 0.18;
         ks = 0.1 * clamp(pow(dot(r,v),8.0), 0.0, 1.0);
     }
     
@@ -86,13 +88,20 @@ void main() {
         c = mix(dirt, stone, x);
         ks = max(x * 0.2, 0.05) * clamp(pow(dot(r,v),5.0), 0.0, 1.0);
         if(vNormal.y > 0.95){
-            c = mix(grass, dirt, 0.3);
-            ks = 0.2 * clamp(pow(dot(r,v),6.0), 0.0, 1.0);
+            c = grass;
+             ka = 0.16;
+            ks = 0.0 * clamp(pow(dot(r,v),6.0), 0.0, 1.0);
         }
     }
     if(vTriangleHeight > upper){
         c = stone;
         ks = 0.2 * clamp(pow(dot(r,v),5.0), 0.0, 1.0);
+        if(vNormal.y > 0.95){
+            if(h > upper + 0.05 && snoise(vec2(h,h)*100.0) > -0.2){ //ok
+                c = white;
+                ks = 0.3 * clamp(pow(dot(r,v),4.0), 0.0, 1.0);
+            }
+        }
     }
     if(vTriangleHeight > mountainLevel){
         c = white;
@@ -115,13 +124,14 @@ void main() {
     // spec = vSnow < 2.0 ? spec : 3.0 * spec;
     // // c = ambient + diffuse;// + spec;
     // c = ambient + diffuse + spec;
-
+    
+    
     vec3 ambient = ka * c;
     vec3 diffuse = kd * c;
     vec3 spec = ks * (vec3(1.0,1.0,1.0) + c);
     
     gl_FragColor.xyz = ambient + diffuse + spec;
-    gl_FragColor.a = 0.5;
+    gl_FragColor.a = 1.0;
 }
 
 //kolla normal vinkel vs top = snö

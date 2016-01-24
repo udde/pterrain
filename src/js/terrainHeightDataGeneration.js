@@ -29,7 +29,7 @@ function terrainGeometry() {
 function generateTerrainData(resX, resY) {
     
     var gridResX = resX, gridResY = resY;
-    gridResX = 100, gridResY = 100;
+    gridResX = 400, gridResY = 400;
     var xScale = 16, yScale = 16;
     var offsetX = 0, offsetY = 0;
     var totalSquareSize = 18;
@@ -150,15 +150,27 @@ function getHeight(x ,y, getMax)
     // height = 5*el;
 
     var f = 0.125 / (128 * 1.0) ;
-    var s = 2.0 * 16 / 1.0;
-    var height = s * simplex.noise2D(f*x,f*y);
+    var s = 2.0 * 16 / 0.9;
+    var height = s * simplex.noise2D(1.16*f*x,1.0*f*y); //a
+    
+    var d = math.sqrt(x*x + y*y);
+    var b = 50*16;
+    
+    if(d > b ){
+        
+        var dd = 1.0 + (d-b)*0.01;
+        height /= math.min(dd, 8); //
+    }
+    
     var max = s;
     s = s/2;
     f = f*2;
     height += s * simplex.noise2D(f*x, f*y);
     max += s;
-    // if(height)
-    // height *= (0.5*height);
+    
+    
+    
+    
     height =  height > 0.0 ? height * (math.pow(height, 0.5)) : height *0.8;
     max = max * math.pow(max, 0.5);
     

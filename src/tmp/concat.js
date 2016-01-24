@@ -2472,6 +2472,94 @@ THREE.EffectComposer.prototype = {
 
 /**
  * @author alteredq / http://alteredqualia.com/
+ * @author davidedc / http://www.sketchpatch.net/
+ *
+ * NVIDIA FXAA by Timothy Lottes
+ * http://timothylottes.blogspot.com/2011/06/fxaa3-source-released.html
+ * - WebGL port by @supereggbert
+ * http://www.glge.org/demos/fxaa/
+ */
+
+THREE.FXAAShader = {
+
+	uniforms: {
+
+		"tDiffuse":   { type: "t", value: null },
+		"resolution": { type: "v2", value: new THREE.Vector2( 1 / 1024, 1 / 512 ) }
+
+	},
+
+	vertexShader: [
+
+		"void main() {",
+
+			"gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+
+		"}"
+
+	].join( "\n" ),
+
+	fragmentShader: [
+
+		"uniform sampler2D tDiffuse;",
+		"uniform vec2 resolution;",
+
+		"#define FXAA_REDUCE_MIN   (1.0/128.0)",
+		"#define FXAA_REDUCE_MUL   (1.0/8.0)",
+		"#define FXAA_SPAN_MAX     8.0",
+
+		"void main() {",
+
+			"vec3 rgbNW = texture2D( tDiffuse, ( gl_FragCoord.xy + vec2( -1.0, -1.0 ) ) * resolution ).xyz;",
+			"vec3 rgbNE = texture2D( tDiffuse, ( gl_FragCoord.xy + vec2( 1.0, -1.0 ) ) * resolution ).xyz;",
+			"vec3 rgbSW = texture2D( tDiffuse, ( gl_FragCoord.xy + vec2( -1.0, 1.0 ) ) * resolution ).xyz;",
+			"vec3 rgbSE = texture2D( tDiffuse, ( gl_FragCoord.xy + vec2( 1.0, 1.0 ) ) * resolution ).xyz;",
+			"vec4 rgbaM  = texture2D( tDiffuse,  gl_FragCoord.xy  * resolution );",
+			"vec3 rgbM  = rgbaM.xyz;",
+			"vec3 luma = vec3( 0.299, 0.587, 0.114 );",
+
+			"float lumaNW = dot( rgbNW, luma );",
+			"float lumaNE = dot( rgbNE, luma );",
+			"float lumaSW = dot( rgbSW, luma );",
+			"float lumaSE = dot( rgbSE, luma );",
+			"float lumaM  = dot( rgbM,  luma );",
+			"float lumaMin = min( lumaM, min( min( lumaNW, lumaNE ), min( lumaSW, lumaSE ) ) );",
+			"float lumaMax = max( lumaM, max( max( lumaNW, lumaNE) , max( lumaSW, lumaSE ) ) );",
+
+			"vec2 dir;",
+			"dir.x = -((lumaNW + lumaNE) - (lumaSW + lumaSE));",
+			"dir.y =  ((lumaNW + lumaSW) - (lumaNE + lumaSE));",
+
+			"float dirReduce = max( ( lumaNW + lumaNE + lumaSW + lumaSE ) * ( 0.25 * FXAA_REDUCE_MUL ), FXAA_REDUCE_MIN );",
+
+			"float rcpDirMin = 1.0 / ( min( abs( dir.x ), abs( dir.y ) ) + dirReduce );",
+			"dir = min( vec2( FXAA_SPAN_MAX,  FXAA_SPAN_MAX),",
+				  "max( vec2(-FXAA_SPAN_MAX, -FXAA_SPAN_MAX),",
+						"dir * rcpDirMin)) * resolution;",
+			"vec4 rgbA = (1.0/2.0) * (",
+        	"texture2D(tDiffuse,  gl_FragCoord.xy  * resolution + dir * (1.0/3.0 - 0.5)) +",
+			"texture2D(tDiffuse,  gl_FragCoord.xy  * resolution + dir * (2.0/3.0 - 0.5)));",
+    		"vec4 rgbB = rgbA * (1.0/2.0) + (1.0/4.0) * (",
+			"texture2D(tDiffuse,  gl_FragCoord.xy  * resolution + dir * (0.0/3.0 - 0.5)) +",
+      		"texture2D(tDiffuse,  gl_FragCoord.xy  * resolution + dir * (3.0/3.0 - 0.5)));",
+    		"float lumaB = dot(rgbB, vec4(luma, 0.0));",
+
+			"if ( ( lumaB < lumaMin ) || ( lumaB > lumaMax ) ) {",
+
+				"gl_FragColor = rgbA;",
+
+			"} else {",
+				"gl_FragColor = rgbB;",
+
+			"}",
+
+		"}"
+
+	].join( "\n" )
+
+};
+/**
+ * @author alteredq / http://alteredqualia.com/
  */
 
 THREE.MaskPass = function ( scene, camera ) {
@@ -3128,7 +3216,7 @@ function terrainGeometry() {
 function generateTerrainData(resX, resY) {
     
     var gridResX = resX, gridResY = resY;
-    gridResX = 100, gridResY = 100;
+    gridResX = 400, gridResY = 400;
     var xScale = 16, yScale = 16;
     var offsetX = 0, offsetY = 0;
     var totalSquareSize = 18;
@@ -3249,15 +3337,27 @@ function getHeight(x ,y, getMax)
     // height = 5*el;
 
     var f = 0.125 / (128 * 1.0) ;
-    var s = 2.0 * 16 / 1.0;
-    var height = s * simplex.noise2D(f*x,f*y);
+    var s = 2.0 * 16 / 0.9;
+    var height = s * simplex.noise2D(1.16*f*x,1.0*f*y); //a
+    
+    var d = math.sqrt(x*x + y*y);
+    var b = 50*16;
+    
+    if(d > b ){
+        
+        var dd = 1.0 + (d-b)*0.01;
+        height /= math.min(dd, 8); //
+    }
+    
     var max = s;
     s = s/2;
     f = f*2;
     height += s * simplex.noise2D(f*x, f*y);
     max += s;
-    // if(height)
-    // height *= (0.5*height);
+    
+    
+    
+    
     height =  height > 0.0 ? height * (math.pow(height, 0.5)) : height *0.8;
     max = max * math.pow(max, 0.5);
     
@@ -3358,10 +3458,10 @@ function init(){
     container = document.createElement('div');
     document.body.appendChild(container);
     scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0xaa0000, 1.2);
+    debugger;
     camera = new THREE.PerspectiveCamera(30, SCREEN_RATIO, 1, 10000);
-    camera.position.x = 0;
-    camera.position.y = 450;
-    camera.position.z = 800;
+    camera.position.set(505, 280, 1400);
     camera.up = new THREE.Vector3(0.0, 1.0, 0.0);
     camera.lookAt({x: 0, y: 0, z: 0 }); 
     
@@ -3370,8 +3470,11 @@ function init(){
     mirrorTarget = new THREE.WebGLRenderTarget(SCREEN_WIDTH, SCREEN_HEIGHT,  { format: THREE.RGBFormat});
    
     light = new THREE.DirectionalLight(0xdfebff, 1.75);
-    light.position.set(0.0, 1000.0, 200.0);
+    light.position.set(0.0, 0.0, 300.0);
     // scene.add(light);
+    
+    
+    
     
     renderer = new THREE.WebGLRenderer();
     renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
@@ -3391,25 +3494,7 @@ function init(){
         fragmentShader: waterShaders.fs,
         // depthWrite: false
     } );
-    var geometry = new THREE.PlaneGeometry(1600,1600,100,100);
-    // var material = new THREE.MeshBasicMaterial({ wireframe: true, color: 0x44aaff });
-    water = new THREE.Mesh(geometry, material);
-    water.rotation.x = -Math.PI/2;
-    // water.position.y = 300.0;
-    // water.position.z = -1600.0;
-    // scene.add(water); 
     
-    //BOX
-    var geometry = new THREE.BoxGeometry( 100, 100, 100 );
-    var material = new THREE.MeshBasicMaterial( {color: 0x00ff00} );
-    var cube = new THREE.Mesh( geometry, material );
-    // scene.add( cube );
-    //BOX
-    var geometry = new THREE.BoxGeometry( 120, 120, 120 );
-    var material = new THREE.MeshBasicMaterial( {color: 0xff00ff} );
-    var cube = new THREE.Mesh( geometry, material );
-    cube.position.x += 200; cube.position.y -= 60; cube.position.z -= 100;
-    // scene.add( cube );
     
     //TERRAIN
     var meterial = new THREE.ShaderMaterial( {
@@ -3445,13 +3530,13 @@ function init(){
     groundMirror.material.vertexShader = require("../shaders/mirrorVertexShader.glsl")();
     groundMirror.material.fragmentShader = require("../shaders/mirrorFragmentShader.glsl")();
     groundMirror.material.transparent = true;
-    // groundMirror.material.uniforms["uLight"] = {type: "v3", value: light.dire} ;
+    groundMirror.material.uniforms["uLight"] = {type: "v3", value: light.position} ;
     groundMirror.material.uniforms["uCamera"] = {type: "v3", value: camera.position} ; 
     
     var mirrorMesh = new THREE.Mesh( geometry, groundMirror.material );
 	mirrorMesh.add( groundMirror );
 	mirrorMesh.rotateX( - Math.PI / 2 );
-    mirrorMesh.position.y = -100;
+    mirrorMesh.position.y = -113;
 	scene.add( mirrorMesh );
 
     
@@ -3461,22 +3546,24 @@ function init(){
     composer = new THREE.EffectComposer( renderer );
     var pass1 = new THREE.RenderPass(scene, camera);
     var ts = new THREE.ShaderPass(THREE.CopyShader);
+    var fxaa = new THREE.ShaderPass(THREE.FXAAShader);
+    fxaa.uniforms.resolution.value.set(1 / (SCREEN_WIDTH), 1 / (SCREEN_HEIGHT));
     ts.renderToScreen = true;
+    
+    
     composer.addPass(pass1);
+    composer.addPass(fxaa);
     composer.addPass(ts);
-    
-    
-    var effect = new THREE.ShaderPass(THREE.DotScreenShader);
-    effect.uniforms['scale'].value = 4;
-    // effect.renderToScreen = true;
-    // composer.addPass(effect);
 }   
 
 function render(){
+    
+    console.log(camera.position);
     requestAnimationFrame( render );
     
     groundMirror.render();
     composer.render();
+    // renderer.render(scene, camera);
     
     controls.update();
 }

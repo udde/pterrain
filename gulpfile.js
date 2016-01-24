@@ -4,7 +4,7 @@ var concat      = require('gulp-concat');
 var browserify  = require('browserify');
 var source      = require('vinyl-source-stream');
 
-gulp.task('default', ['build', 'watch', 'serve']);
+gulp.task('default', ['build', 'serve', 'watch']);
 
 gulp.task('watch' , function () {
     gulp.watch(['./src/**/*'], ['rebuild']);

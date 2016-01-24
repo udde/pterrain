@@ -4,6 +4,7 @@ uniform vec3 mirrorColor;
 uniform sampler2D mirrorSampler;
 
 uniform vec3 uCamera;
+uniform vec3 uLight;
 
 varying vec4 mirrorCoord;
 varying vec2 vuv;
