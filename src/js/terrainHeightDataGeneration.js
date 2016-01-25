@@ -28,7 +28,7 @@ function terrainGeometry() {
     var hMax = 247.1935272216797;
     var hMin = -145.72349548339844;
     // debugger;
-    
+
     vertexData.aTriangleHeightData.forEach(function(val, index, array){
         array[index] += math.abs(hMin);
         array[index] /= ( math.abs(hMin) + math.abs(hMax) );
@@ -43,7 +43,7 @@ function terrainGeometry() {
 function generateTerrainData(resX, resY) {
     
     var gridResX = resX, gridResY = resY;
-    gridResX = 400, gridResY = 400;
+    gridResX = 200, gridResY = 200;
     var xScale = 16, yScale = 16;
     var offsetX = 0, offsetY = 0;
     var totalSquareSize = 18;

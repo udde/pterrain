@@ -2527,7 +2527,7 @@ function terrainGeometry() {
     var hMax = 247.1935272216797;
     var hMin = -145.72349548339844;
     // debugger;
-    
+
     vertexData.aTriangleHeightData.forEach(function(val, index, array){
         array[index] += math.abs(hMin);
         array[index] /= ( math.abs(hMin) + math.abs(hMax) );
@@ -2542,7 +2542,7 @@ function terrainGeometry() {
 function generateTerrainData(resX, resY) {
     
     var gridResX = resX, gridResY = resY;
-    gridResX = 400, gridResY = 400;
+    gridResX = 200, gridResY = 200;
     var xScale = 16, yScale = 16;
     var offsetX = 0, offsetY = 0;
     var totalSquareSize = 18;
@@ -2751,7 +2751,7 @@ function init(){
     scene.add(terrainMesh); 
     
     //WATER / MIRROR
-    var geometry = new THREE.PlaneGeometry( 6400, 6400, 1 , 1 );
+    var geometry = new THREE.PlaneGeometry( 3200, 3200, 1 , 1 );
     groundMirror = new THREE.Mirror( renderer, camera, { clipBias: 0.003,
 	   textureWidth: SCREEN_WIDTH, textureHeight: SCREEN_HEIGHT, color: 0x777777 } );
     //feed THREE.Mirror with own shaders/uniforms. TODO: make it look more like water...
@@ -2790,11 +2790,10 @@ function render(){
     composer.render();
     // renderer.render(scene, camera);
     
-   
+    controls.update();
 }
 
 function updateStuff(){
-     controls.update(); //
     
 }
 

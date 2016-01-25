@@ -56,7 +56,7 @@ function init(){
     scene.add(terrainMesh); 
     
     //WATER / MIRROR
-    var geometry = new THREE.PlaneGeometry( 6400, 6400, 1 , 1 );
+    var geometry = new THREE.PlaneGeometry( 3200, 3200, 1 , 1 );
     groundMirror = new THREE.Mirror( renderer, camera, { clipBias: 0.003,
 	   textureWidth: SCREEN_WIDTH, textureHeight: SCREEN_HEIGHT, color: 0x777777 } );
     //feed THREE.Mirror with own shaders/uniforms. TODO: make it look more like water...
@@ -95,11 +95,10 @@ function render(){
     composer.render();
     // renderer.render(scene, camera);
     
-   
+    controls.update();
 }
 
 function updateStuff(){
-     controls.update(); //
     
 }
 
