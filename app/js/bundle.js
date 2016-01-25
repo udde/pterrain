@@ -72644,6 +72644,13 @@ THREE.TexturePass.prototype = {
 */
 var math = require('mathjs');
 
+function swap(arr, i, j){
+    
+}
+function sort(arr){
+    
+}
+
 function terrainGeometry() {
    
     var geometry = new THREE.BufferGeometry();
@@ -72653,8 +72660,15 @@ function terrainGeometry() {
     
     //stupid way of calculating triangle height max/min values
     var h = Float32Array.from(vertexData.aTriangleHeightData);
-    h.sort();
-    var hMax = h[h.length-1]; var hMin = h[0];
+    
+    //Bugg - hardcode the values
+    //this only works in chrome atm...
+    // h.sort();
+    // var hMax = h[h.length-1]; var hMin = h[0];
+    var hMax = 247.1935272216797;
+    var hMin = -145.72349548339844;
+    // debugger;
+    
     vertexData.aTriangleHeightData.forEach(function(val, index, array){
         array[index] += math.abs(hMin);
         array[index] /= ( math.abs(hMin) + math.abs(hMax) );
