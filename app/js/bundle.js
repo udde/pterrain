@@ -4486,19 +4486,8 @@ exports['1.3.132.0.35'] = 'p521'
   };
 
   BN.prototype.toNumber = function toNumber () {
-    var length = this.bitLength();
-    var ret;
-    if (length <= 26) {
-      ret = this.words[0];
-    } else if (length <= 52) {
-      ret = (this.words[1] * 0x4000000) + this.words[0];
-    } else if (length === 53) {
-      // NOTE: at this stage it is known that the top bit is set
-      ret = 0x10000000000000 + (this.words[1] * 0x4000000) + this.words[0];
-    } else {
-      assert(false, 'Number can only safely store up to 53 bits');
-    }
-    return (this.negative !== 0) ? -ret : ret;
+    assert(this.bitLength() <= 53, 'Number can only safely store up to 53 bits');
+    return parseInt(this.toString(), 10);
   };
 
   BN.prototype.toJSON = function toJSON () {
@@ -4638,34 +4627,21 @@ exports['1.3.132.0.35'] = 'p521'
     return Math.ceil(this.bitLength() / 8);
   };
 
-  BN.prototype.toTwos = function toTwos (width) {
-    if (this.negative !== 0) {
-      return this.abs().inotn(width).iaddn(1);
-    }
-    return this.clone();
-  };
-
-  BN.prototype.fromTwos = function fromTwos (width) {
-    if (this.testn(width - 1)) {
-      return this.notn(width).iaddn(1).ineg();
-    }
-    return this.clone();
-  };
-
   BN.prototype.isNeg = function isNeg () {
     return this.negative !== 0;
   };
 
   // Return negative clone of `this`
   BN.prototype.neg = function neg () {
-    return this.clone().ineg();
+    if (this.isZero()) return this.clone();
+
+    var r = this.clone();
+    r.negative = this.negative ^ 1;
+    return r;
   };
 
   BN.prototype.ineg = function ineg () {
-    if (!this.isZero()) {
-      this.negative ^= 1;
-    }
-
+    this.negative ^= 1;
     return this;
   };
 
@@ -6326,8 +6302,8 @@ exports['1.3.132.0.35'] = 'p521'
 
       if (mode !== 'div') {
         mod = res.mod.neg();
-        if (positive && mod.negative !== 0) {
-          mod.iadd(num);
+        if (positive && mod.neg) {
+          mod = mod.add(num);
         }
       }
 
@@ -6352,8 +6328,8 @@ exports['1.3.132.0.35'] = 'p521'
 
       if (mode !== 'div') {
         mod = res.mod.neg();
-        if (positive && mod.negative !== 0) {
-          mod.isub(num);
+        if (positive && mod.neg) {
+          mod = mod.isub(num);
         }
       }
 
@@ -6756,46 +6732,6 @@ exports['1.3.132.0.35'] = 'p521'
       break;
     }
     return res;
-  };
-
-  BN.prototype.gtn = function gtn (num) {
-    return this.cmpn(num) === 1;
-  };
-
-  BN.prototype.gt = function gt (num) {
-    return this.cmp(num) === 1;
-  };
-
-  BN.prototype.gten = function gten (num) {
-    return this.cmpn(num) >= 0;
-  };
-
-  BN.prototype.gte = function gte (num) {
-    return this.cmp(num) >= 0;
-  };
-
-  BN.prototype.ltn = function ltn (num) {
-    return this.cmpn(num) === -1;
-  };
-
-  BN.prototype.lt = function lt (num) {
-    return this.cmp(num) === -1;
-  };
-
-  BN.prototype.lten = function lten (num) {
-    return this.cmpn(num) <= 0;
-  };
-
-  BN.prototype.lte = function lte (num) {
-    return this.cmp(num) <= 0;
-  };
-
-  BN.prototype.eqn = function eqn (num) {
-    return this.cmpn(num) === 0;
-  };
-
-  BN.prototype.eq = function eq (num) {
-    return this.cmp(num) === 0;
   };
 
   //
@@ -7868,11 +7804,7 @@ EdwardsCurve.prototype.pointFromX = function pointFromX(x, odd) {
   var rhs = this.c2.redSub(this.a.redMul(x2));
   var lhs = this.one.redSub(this.c2.redMul(this.d).redMul(x2));
 
-  var y2 = rhs.redMul(lhs.redInvm());
-  var y = y2.redSqrt();
-  if (y.redSqr().redSub(y2).cmp(this.zero) !== 0)
-    throw new Error('invalid point');
-
+  var y = rhs.redMul(lhs.redInvm()).redSqrt();
   var isOdd = y.fromRed().isOdd();
   if (odd && !isOdd || !odd && isOdd)
     y = y.redNeg();
@@ -8603,8 +8535,6 @@ ShortCurve.prototype.pointFromX = function pointFromX(x, odd) {
 
   var y2 = x.redSqr().redMul(x).redIAdd(x.redMul(this.a)).redIAdd(this.b);
   var y = y2.redSqrt();
-  if (y.redSqr().redSub(y2).cmp(this.zero) !== 0)
-    throw new Error('invalid point');
 
   // XXX Is there any way to tell if the number is odd without converting it
   // to non-red form?
@@ -9634,9 +9564,7 @@ EC.prototype.sign = function sign(msg, key, enc, options) {
   var drbg = new elliptic.hmacDRBG({
     hash: this.hash,
     entropy: bkey,
-    nonce: nonce,
-    pers: options.pers,
-    persEnc: options.persEnc
+    nonce: nonce
   });
 
   // Number of bytes to generate
@@ -9737,12 +9665,7 @@ EC.prototype.getKeyRecoveryParam = function(e, signature, Q, enc) {
     return signature.recoveryParam;
 
   for (var i = 0; i < 4; i++) {
-    var Qprime;
-    try {
-      Qprime = this.recoverPubKey(e, signature, i);
-    } catch (e) {
-      continue;
-    }
+    var Qprime = this.recoverPubKey(e, signature, i);
 
     if (Qprime.eq(Q))
       return i;
@@ -9878,10 +9801,10 @@ function Signature(options, enc) {
   assert(options.r && options.s, 'Signature without r or s');
   this.r = new BN(options.r, 16);
   this.s = new BN(options.s, 16);
-  if (options.recoveryParam === undefined)
-    this.recoveryParam = null;
-  else
+  if (options.recoveryParam !== null)
     this.recoveryParam = options.recoveryParam;
+  else
+    this.recoveryParam = null;
 }
 module.exports = Signature;
 
@@ -12548,7 +12471,7 @@ exports.shr64_lo = shr64_lo;
 },{"inherits":199}],64:[function(require,module,exports){
 module.exports={
   "name": "elliptic",
-  "version": "6.2.2",
+  "version": "6.1.0",
   "description": "EC cryptography",
   "main": "lib/elliptic.js",
   "files": [
@@ -12592,19 +12515,19 @@ module.exports={
     "hash.js": "^1.0.0",
     "inherits": "^2.0.1"
   },
-  "gitHead": "628eb61186a7f1c81247cf991d808dc9ead83645",
-  "_id": "elliptic@6.2.2",
-  "_shasum": "806bfa651a5aa4996a1e79c92b573761ea7d7574",
+  "gitHead": "b465fea90447f3b6c0b3f55e5fd6ecdedc1282f2",
+  "_id": "elliptic@6.1.0",
+  "_shasum": "68130e03823b4ce024955ad1be195e148099d654",
   "_from": "elliptic@>=6.0.0 <7.0.0",
   "_npmVersion": "3.3.12",
-  "_nodeVersion": "5.4.1",
+  "_nodeVersion": "5.2.0",
   "_npmUser": {
     "name": "indutny",
     "email": "fedor@indutny.com"
   },
   "dist": {
-    "shasum": "806bfa651a5aa4996a1e79c92b573761ea7d7574",
-    "tarball": "http://registry.npmjs.org/elliptic/-/elliptic-6.2.2.tgz"
+    "shasum": "68130e03823b4ce024955ad1be195e148099d654",
+    "tarball": "http://registry.npmjs.org/elliptic/-/elliptic-6.1.0.tgz"
   },
   "maintainers": [
     {
@@ -12613,7 +12536,7 @@ module.exports={
     }
   ],
   "directories": {},
-  "_resolved": "https://registry.npmjs.org/elliptic/-/elliptic-6.2.2.tgz"
+  "_resolved": "https://registry.npmjs.org/elliptic/-/elliptic-6.1.0.tgz"
 }
 
 },{}],65:[function(require,module,exports){
@@ -16456,7 +16379,7 @@ module.exports = function createHmac(alg, key) {
 },{"buffer":2,"create-hash/browser":130,"inherits":199,"stream":216}],144:[function(require,module,exports){
 (function (Buffer){
 var generatePrime = require('./lib/generatePrime')
-var primes = require('./lib/primes.json')
+var primes = require('./lib/primes')
 
 var DH = require('./lib/dh')
 
@@ -16499,7 +16422,7 @@ exports.DiffieHellmanGroup = exports.createDiffieHellmanGroup = exports.getDiffi
 exports.createDiffieHellman = exports.DiffieHellman = createDiffieHellman
 
 }).call(this,require("buffer").Buffer)
-},{"./lib/dh":145,"./lib/generatePrime":146,"./lib/primes.json":147,"buffer":2}],145:[function(require,module,exports){
+},{"./lib/dh":145,"./lib/generatePrime":146,"./lib/primes":147,"buffer":2}],145:[function(require,module,exports){
 (function (Buffer){
 var BN = require('bn.js');
 var MillerRabin = require('miller-rabin');
@@ -69975,144 +69898,144 @@ if (typeof module !== 'undefined') {
 
 },{}],717:[function(require,module,exports){
 module.exports = function parse(params){
-      var template = "precision highp float; \n" +
-"//stegu noise \n" +
-"vec3 mod289(vec3 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec4 mod289(vec4 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec4 permute(vec4 x) {return mod289(((x*34.0)+1.0)*x);}vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}vec2 mod289(vec2 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec3 permute(vec3 x) {return mod289(((x*34.0)+1.0)*x);}float snoise(vec3 v){const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);vec3 i  = floor(v + dot(v, C.yyy) );vec3 x0 =   v - i + dot(i, C.xxx) ;vec3 g = step(x0.yzx, x0.xyz);vec3 l = 1.0 - g;vec3 i1 = min( g.xyz, l.zxy );vec3 i2 = max( g.xyz, l.zxy );vec3 x1 = x0 - i1 + C.xxx;vec3 x2 = x0 - i2 + C.yyy; vec3 x3 = x0 - D.yyy; i = mod289(i);vec4 p = permute( permute( permute(i.z + vec4(0.0, i1.z, i2.z, 1.0 ))+ i.y + vec4(0.0, i1.y, i2.y, 1.0 ))+ i.x + vec4(0.0, i1.x, i2.x, 1.0 ));float n_ = 0.142857142857; vec3  ns = n_ * D.wyz - D.xzx;vec4 j = p - 49.0 * floor(p * ns.z * ns.z); vec4 x_ = floor(j * ns.z);vec4 y_ = floor(j - 7.0 * x_ ); vec4 x = x_ *ns.x + ns.yyyy;vec4 y = y_ *ns.x + ns.yyyy;vec4 h = 1.0 - abs(x) - abs(y);vec4 b0 = vec4( x.xy, y.xy );vec4 b1 = vec4( x.zw, y.zw );vec4 s0 = floor(b0)*2.0 + 1.0;vec4 s1 = floor(b1)*2.0 + 1.0;vec4 sh = -step(h, vec4(0.0));vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;vec3 p0 = vec3(a0.xy,h.x);vec3 p1 = vec3(a0.zw,h.y);vec3 p2 = vec3(a1.xy,h.z);vec3 p3 = vec3(a1.zw,h.w);vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));p0 *= norm.x;p1 *= norm.y;p2 *= norm.z;p3 *= norm.w;vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);m = m * m;return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),dot(p2,x2), dot(p3,x3) ) );} float snoise(vec2 v) {const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);vec2 i  = floor(v + dot(v, C.yy) );vec2 x0 = v -   i + dot(i, C.xx);vec2 i1;i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);vec4 x12 = x0.xyxy + C.xxzz;x12.xy -= i1;i = mod289(i);vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))+ i.x + vec3(0.0, i1.x, 1.0 ));vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);m = m*m ;m = m*m ;vec3 x = 2.0 * fract(p * C.www) - 1.0;vec3 h = abs(x) - 0.5;vec3 ox = floor(x + 0.5);vec3 a0 = x - ox;m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );vec3 g;g.x  = a0.x  * x0.x  + h.x  * x0.y;g.yz = a0.yz * x12.xz + h.yz * x12.yw;return 130.0 * dot(m, g);} \n" +
-" \n" +
-" \n" +
-"uniform vec3 uCameraPos; \n" +
-"uniform vec3 uLightPos; \n" +
-" \n" +
-"varying vec3 vPos; \n" +
-"varying vec3 vNormal; \n" +
-"varying float vTriangleHeight; \n" +
-" \n" +
-"void main() { \n" +
-"    // vec3 uCameraPos = vec3(0.0, 0.5, -0.5);  \n" +
-"     \n" +
-"    vec3 n = vNormal; \n" +
-"    float h = vTriangleHeight; \n" +
-"     \n" +
-"    float waterLevel = 0.303; \n" +
-"    float sandLevel = 0.33; \n" +
-"    float grassLevel = 0.4; \n" +
-"    float mountainLevel = 0.77; \n" +
-"    float snowLevel = 1.1; \n" +
-"     \n" +
-"     \n" +
-"    vec3 beige = vec3(213,200,119)/255.0; \n" +
-"    vec3 green = vec3(38,116,39)/255.0; \n" +
-"    vec3 green2 = vec3(33,106,13)/255.0; \n" +
-"    vec3 brown = vec3(85,62,42)/255.0; //rgb(83,68,57) \n" +
-"    vec3 brown2 = vec3(77,52,32)/255.0; \n" +
-"    vec3 gray = vec3(60,57,55)/255.0; \n" +
-"    vec3 gray2 = vec3(70,67,65)/255.0; \n" +
-"    vec3 white = vec3(227,229,240)/255.0; \n" +
-"    vec3 c = gray; \n" +
-" \n" +
-"     \n" +
-"    float ka = 0.2; \n" +
-"    vec3 li = normalize(uLightPos); \n" +
-"    float kd = 0.5 * clamp(dot(n, li), 0.0, 1.0); \n" +
-" \n" +
-"    vec3 r = normalize(2.0*n*(dot(n,li)) - li); \n" +
-"    vec3 v = normalize(uCameraPos - vPos); \n" +
-"    float ks = 0.0 * clamp(pow(dot(r,v),4.0), 0.0, 1.0); \n" +
-" \n" +
-"    float lo = sandLevel; \n" +
-"    float u = 0.5; \n" +
-"    if(vTriangleHeight < sandLevel ){ \n" +
-"        c = beige + min(h*2.0, 0.4); \n" +
-"        c = c - 0.05*snoise(vec2(vPos.x * 0.3,vPos.y * 0.3)); \n" +
-"        ks = 0.0 * clamp(pow(dot(r,v),1.0), 0.0, 1.0); \n" +
-"    } \n" +
-"    float upper = sandLevel + 0.00; \n" +
-"    float lower = sandLevel -0.05; \n" +
-"    if(vTriangleHeight > lower && vTriangleHeight < upper){ \n" +
-"        float range = upper - lower; \n" +
-"        float x = (h-lower)/range; \n" +
-"        c = beige + min(h*2.0, 0.4); \n" +
-"        c = c - 0.05*snoise(vec2(vPos.x * 0.3,vPos.y * 0.3)); \n" +
-"        c = mix(c,green,x); \n" +
-"        ks = 0.0 * clamp(pow(dot(r,v),8.0), 0.0, 1.0); \n" +
-"    } \n" +
-"    vec3 grass = snoise(1000.0*vec2(sin(100.0*h),cos(0.1*h))) < 0.0 ? green : green2; \n" +
-"    vec3 dirt = snoise(1000.0*vec2(h,h)) < 0.0 ? brown : brown2; \n" +
-"    vec3 stone = snoise(1000.0*vec2(h,h)) < 0.0 ? gray : gray2; \n" +
-"     \n" +
-"    if(h > upper && h < grassLevel){ \n" +
-"        c = grass; \n" +
-"        ka = 0.16; \n" +
-"         ks = 0.0 * clamp(pow(dot(r,v),8.0), 0.0, 1.0); \n" +
-"    } \n" +
-"     \n" +
-"    lower = grassLevel - 0.05; \n" +
-"    upper = grassLevel + 0.05; \n" +
-"    if(h > lower && h < upper){ \n" +
-"        float range = upper - lower; \n" +
-"        float x = (h-lower)/range; \n" +
-"        c = mix(grass, dirt, x); \n" +
-"        ka = 0.18; \n" +
-"        ks = 0.0 * clamp(pow(dot(r,v),8.0), 0.0, 1.0); \n" +
-"    } \n" +
-"     \n" +
-"    lower = upper; \n" +
-"    upper = grassLevel + 0.23; \n" +
-"    if(vTriangleHeight > lower && vTriangleHeight < upper){ \n" +
-"        float range = upper - lower; \n" +
-"        float x = (h-lower)/range; \n" +
-"        // c = mix(green,brown,x); \n" +
-"        c = mix(dirt, stone, x); \n" +
-"        ks = max(x * 0.2, 0.05) * clamp(pow(dot(r,v),5.0), 0.0, 1.0); \n" +
-"        if(vNormal.y > 0.95){ \n" +
-"            c = grass; \n" +
-"             ka = 0.16; \n" +
-"            ks = 0.0 * clamp(pow(dot(r,v),6.0), 0.0, 1.0); \n" +
-"        } \n" +
-"    } \n" +
-"    if(vTriangleHeight > upper){ \n" +
-"        c = stone; \n" +
-"        ks = 0.2 * clamp(pow(dot(r,v),5.0), 0.0, 1.0); \n" +
-"        if(vNormal.y > 0.95){ \n" +
-"            if(h > upper + 0.05 && snoise(vec2(h,h)*100.0) > -0.2){ //ok \n" +
-"                c = white; \n" +
-"                ks = 0.3 * clamp(pow(dot(r,v),4.0), 0.0, 1.0); \n" +
-"            } \n" +
-"        } \n" +
-"    } \n" +
-"    if(vTriangleHeight > mountainLevel){ \n" +
-"        c = white; \n" +
-"        ks = 0.3 * clamp(pow(dot(r,v),3.0), 0.0, 1.0); \n" +
-"    } \n" +
-" \n" +
-"    // OVAN Här \n" +
-"     \n" +
-"    //polygon flat normal \n" +
-"    // vec3 fdx = normalize(dFdx( uCamera - vPos )); \n" +
-"    // vec3 fdy = normalize(dFdy( uCamera - vPos )); \n" +
-"    // vec3 nn = normalize( cross( fdx, fdy ) ); \n" +
-" \n" +
-"    // blue = blue + 0.125*snoise(100.0*vec2(0.1*vUv.x, vUv.y)); \n" +
-" \n" +
-"    //// r = 2n(n*l) - l \n" +
-"    // //ks * (r*v)^a \n" +
-"    // \n" +
-"    // spec = vHeight < 0.5 ? spec * 0.1 : spec; \n" +
-"    // spec = vSnow < 2.0 ? spec : 3.0 * spec; \n" +
-"    // // c = ambient + diffuse;// + spec; \n" +
-"    // c = ambient + diffuse + spec; \n" +
-"     \n" +
-"     \n" +
-"    vec3 ambient = ka * c; \n" +
-"    vec3 diffuse = kd * c; \n" +
-"    vec3 spec = ks * (vec3(1.0,1.0,1.0) + c); \n" +
-"     \n" +
-"    gl_FragColor.xyz = ambient + diffuse + spec; \n" +
-"    gl_FragColor.a = 1.0; \n" +
-"} \n" +
-" \n" +
-"//kolla normal vinkel vs top = snö \n" +
-"//kolla triangle height för färgton \n" +
+      var template = "precision highp float; \n" +" \n" +
+"//stegu noise \n" +" \n" +
+"vec3 mod289(vec3 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec4 mod289(vec4 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec4 permute(vec4 x) {return mod289(((x*34.0)+1.0)*x);}vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}vec2 mod289(vec2 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec3 permute(vec3 x) {return mod289(((x*34.0)+1.0)*x);}float snoise(vec3 v){const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);vec3 i  = floor(v + dot(v, C.yyy) );vec3 x0 =   v - i + dot(i, C.xxx) ;vec3 g = step(x0.yzx, x0.xyz);vec3 l = 1.0 - g;vec3 i1 = min( g.xyz, l.zxy );vec3 i2 = max( g.xyz, l.zxy );vec3 x1 = x0 - i1 + C.xxx;vec3 x2 = x0 - i2 + C.yyy; vec3 x3 = x0 - D.yyy; i = mod289(i);vec4 p = permute( permute( permute(i.z + vec4(0.0, i1.z, i2.z, 1.0 ))+ i.y + vec4(0.0, i1.y, i2.y, 1.0 ))+ i.x + vec4(0.0, i1.x, i2.x, 1.0 ));float n_ = 0.142857142857; vec3  ns = n_ * D.wyz - D.xzx;vec4 j = p - 49.0 * floor(p * ns.z * ns.z); vec4 x_ = floor(j * ns.z);vec4 y_ = floor(j - 7.0 * x_ ); vec4 x = x_ *ns.x + ns.yyyy;vec4 y = y_ *ns.x + ns.yyyy;vec4 h = 1.0 - abs(x) - abs(y);vec4 b0 = vec4( x.xy, y.xy );vec4 b1 = vec4( x.zw, y.zw );vec4 s0 = floor(b0)*2.0 + 1.0;vec4 s1 = floor(b1)*2.0 + 1.0;vec4 sh = -step(h, vec4(0.0));vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;vec3 p0 = vec3(a0.xy,h.x);vec3 p1 = vec3(a0.zw,h.y);vec3 p2 = vec3(a1.xy,h.z);vec3 p3 = vec3(a1.zw,h.w);vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));p0 *= norm.x;p1 *= norm.y;p2 *= norm.z;p3 *= norm.w;vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);m = m * m;return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),dot(p2,x2), dot(p3,x3) ) );} float snoise(vec2 v) {const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);vec2 i  = floor(v + dot(v, C.yy) );vec2 x0 = v -   i + dot(i, C.xx);vec2 i1;i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);vec4 x12 = x0.xyxy + C.xxzz;x12.xy -= i1;i = mod289(i);vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))+ i.x + vec3(0.0, i1.x, 1.0 ));vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);m = m*m ;m = m*m ;vec3 x = 2.0 * fract(p * C.www) - 1.0;vec3 h = abs(x) - 0.5;vec3 ox = floor(x + 0.5);vec3 a0 = x - ox;m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );vec3 g;g.x  = a0.x  * x0.x  + h.x  * x0.y;g.yz = a0.yz * x12.xz + h.yz * x12.yw;return 130.0 * dot(m, g);} \n" +" \n" +
+" \n" +" \n" +
+" \n" +" \n" +
+"uniform vec3 uCameraPos; \n" +" \n" +
+"uniform vec3 uLightPos; \n" +" \n" +
+" \n" +" \n" +
+"varying vec3 vPos; \n" +" \n" +
+"varying vec3 vNormal; \n" +" \n" +
+"varying float vTriangleHeight; \n" +" \n" +
+" \n" +" \n" +
+"void main() { \n" +" \n" +
+"    // vec3 uCameraPos = vec3(0.0, 0.5, -0.5);  \n" +" \n" +
+"     \n" +" \n" +
+"    vec3 n = vNormal; \n" +" \n" +
+"    float h = vTriangleHeight; \n" +" \n" +
+"     \n" +" \n" +
+"    float waterLevel = 0.303; \n" +" \n" +
+"    float sandLevel = 0.33; \n" +" \n" +
+"    float grassLevel = 0.4; \n" +" \n" +
+"    float mountainLevel = 0.77; \n" +" \n" +
+"    float snowLevel = 1.1; \n" +" \n" +
+"     \n" +" \n" +
+"     \n" +" \n" +
+"    vec3 beige = vec3(213,200,119)/255.0; \n" +" \n" +
+"    vec3 green = vec3(38,116,39)/255.0; \n" +" \n" +
+"    vec3 green2 = vec3(33,106,13)/255.0; \n" +" \n" +
+"    vec3 brown = vec3(85,62,42)/255.0; //rgb(83,68,57) \n" +" \n" +
+"    vec3 brown2 = vec3(77,52,32)/255.0; \n" +" \n" +
+"    vec3 gray = vec3(60,57,55)/255.0; \n" +" \n" +
+"    vec3 gray2 = vec3(70,67,65)/255.0; \n" +" \n" +
+"    vec3 white = vec3(227,229,240)/255.0; \n" +" \n" +
+"    vec3 c = gray; \n" +" \n" +
+" \n" +" \n" +
+"     \n" +" \n" +
+"    float ka = 0.2; \n" +" \n" +
+"    vec3 li = normalize(uLightPos); \n" +" \n" +
+"    float kd = 0.5 * clamp(dot(n, li), 0.0, 1.0); \n" +" \n" +
+" \n" +" \n" +
+"    vec3 r = normalize(2.0*n*(dot(n,li)) - li); \n" +" \n" +
+"    vec3 v = normalize(uCameraPos - vPos); \n" +" \n" +
+"    float ks = 0.0 * clamp(pow(dot(r,v),4.0), 0.0, 1.0); \n" +" \n" +
+" \n" +" \n" +
+"    float lo = sandLevel; \n" +" \n" +
+"    float u = 0.5; \n" +" \n" +
+"    if(vTriangleHeight < sandLevel ){ \n" +" \n" +
+"        c = beige + min(h*2.0, 0.4); \n" +" \n" +
+"        c = c - 0.05*snoise(vec2(vPos.x * 0.3,vPos.y * 0.3)); \n" +" \n" +
+"        ks = 0.0 * clamp(pow(dot(r,v),1.0), 0.0, 1.0); \n" +" \n" +
+"    } \n" +" \n" +
+"    float upper = sandLevel + 0.00; \n" +" \n" +
+"    float lower = sandLevel -0.05; \n" +" \n" +
+"    if(vTriangleHeight > lower && vTriangleHeight < upper){ \n" +" \n" +
+"        float range = upper - lower; \n" +" \n" +
+"        float x = (h-lower)/range; \n" +" \n" +
+"        c = beige + min(h*2.0, 0.4); \n" +" \n" +
+"        c = c - 0.05*snoise(vec2(vPos.x * 0.3,vPos.y * 0.3)); \n" +" \n" +
+"        c = mix(c,green,x); \n" +" \n" +
+"        ks = 0.0 * clamp(pow(dot(r,v),8.0), 0.0, 1.0); \n" +" \n" +
+"    } \n" +" \n" +
+"    vec3 grass = snoise(1000.0*vec2(sin(100.0*h),cos(0.1*h))) < 0.0 ? green : green2; \n" +" \n" +
+"    vec3 dirt = snoise(1000.0*vec2(h,h)) < 0.0 ? brown : brown2; \n" +" \n" +
+"    vec3 stone = snoise(1000.0*vec2(h,h)) < 0.0 ? gray : gray2; \n" +" \n" +
+"     \n" +" \n" +
+"    if(h > upper && h < grassLevel){ \n" +" \n" +
+"        c = grass; \n" +" \n" +
+"        ka = 0.16; \n" +" \n" +
+"         ks = 0.0 * clamp(pow(dot(r,v),8.0), 0.0, 1.0); \n" +" \n" +
+"    } \n" +" \n" +
+"     \n" +" \n" +
+"    lower = grassLevel - 0.05; \n" +" \n" +
+"    upper = grassLevel + 0.05; \n" +" \n" +
+"    if(h > lower && h < upper){ \n" +" \n" +
+"        float range = upper - lower; \n" +" \n" +
+"        float x = (h-lower)/range; \n" +" \n" +
+"        c = mix(grass, dirt, x); \n" +" \n" +
+"        ka = 0.18; \n" +" \n" +
+"        ks = 0.0 * clamp(pow(dot(r,v),8.0), 0.0, 1.0); \n" +" \n" +
+"    } \n" +" \n" +
+"     \n" +" \n" +
+"    lower = upper; \n" +" \n" +
+"    upper = grassLevel + 0.23; \n" +" \n" +
+"    if(vTriangleHeight > lower && vTriangleHeight < upper){ \n" +" \n" +
+"        float range = upper - lower; \n" +" \n" +
+"        float x = (h-lower)/range; \n" +" \n" +
+"        // c = mix(green,brown,x); \n" +" \n" +
+"        c = mix(dirt, stone, x); \n" +" \n" +
+"        ks = max(x * 0.2, 0.05) * clamp(pow(dot(r,v),5.0), 0.0, 1.0); \n" +" \n" +
+"        if(vNormal.y > 0.95){ \n" +" \n" +
+"            c = grass; \n" +" \n" +
+"             ka = 0.16; \n" +" \n" +
+"            ks = 0.0 * clamp(pow(dot(r,v),6.0), 0.0, 1.0); \n" +" \n" +
+"        } \n" +" \n" +
+"    } \n" +" \n" +
+"    if(vTriangleHeight > upper){ \n" +" \n" +
+"        c = stone; \n" +" \n" +
+"        ks = 0.2 * clamp(pow(dot(r,v),5.0), 0.0, 1.0); \n" +" \n" +
+"        if(vNormal.y > 0.95){ \n" +" \n" +
+"            if(h > upper + 0.05 && snoise(vec2(h,h)*100.0) > -0.2){ //ok \n" +" \n" +
+"                c = white; \n" +" \n" +
+"                ks = 0.3 * clamp(pow(dot(r,v),4.0), 0.0, 1.0); \n" +" \n" +
+"            } \n" +" \n" +
+"        } \n" +" \n" +
+"    } \n" +" \n" +
+"    if(vTriangleHeight > mountainLevel){ \n" +" \n" +
+"        c = white; \n" +" \n" +
+"        ks = 0.3 * clamp(pow(dot(r,v),3.0), 0.0, 1.0); \n" +" \n" +
+"    } \n" +" \n" +
+" \n" +" \n" +
+"    // OVAN Här \n" +" \n" +
+"     \n" +" \n" +
+"    //polygon flat normal \n" +" \n" +
+"    // vec3 fdx = normalize(dFdx( uCamera - vPos )); \n" +" \n" +
+"    // vec3 fdy = normalize(dFdy( uCamera - vPos )); \n" +" \n" +
+"    // vec3 nn = normalize( cross( fdx, fdy ) ); \n" +" \n" +
+" \n" +" \n" +
+"    // blue = blue + 0.125*snoise(100.0*vec2(0.1*vUv.x, vUv.y)); \n" +" \n" +
+" \n" +" \n" +
+"    //// r = 2n(n*l) - l \n" +" \n" +
+"    // //ks * (r*v)^a \n" +" \n" +
+"    // \n" +" \n" +
+"    // spec = vHeight < 0.5 ? spec * 0.1 : spec; \n" +" \n" +
+"    // spec = vSnow < 2.0 ? spec : 3.0 * spec; \n" +" \n" +
+"    // // c = ambient + diffuse;// + spec; \n" +" \n" +
+"    // c = ambient + diffuse + spec; \n" +" \n" +
+"     \n" +" \n" +
+"     \n" +" \n" +
+"    vec3 ambient = ka * c; \n" +" \n" +
+"    vec3 diffuse = kd * c; \n" +" \n" +
+"    vec3 spec = ks * (vec3(1.0,1.0,1.0) + c); \n" +" \n" +
+"     \n" +" \n" +
+"    gl_FragColor.xyz = ambient + diffuse + spec; \n" +" \n" +
+"    gl_FragColor.a = 1.0; \n" +" \n" +
+"} \n" +" \n" +
+" \n" +" \n" +
+"//kolla normal vinkel vs top = snö \n" +" \n" +
+"//kolla triangle height för färgton \n" +" \n" +
 " \n" 
       params = params || {}
       for(var key in params) {
@@ -70124,22 +70047,22 @@ module.exports = function parse(params){
 
 },{}],718:[function(require,module,exports){
 module.exports = function parse(params){
-      var template = " \n" +
-"// attribute vec3 aPosition; \n" +
-"// attribute vec3 aNormal; \n" +
-"attribute float triangleHeight; \n" +
-" \n" +
-"varying vec3 vPos; \n" +
-"varying vec3 vNormal; \n" +
-"varying float vTriangleHeight; \n" +
-" \n" +
-"void main() { \n" +
-"    vPos = position; \n" +
-"    vNormal = normalize(normal); \n" +
-"    vTriangleHeight = triangleHeight; \n" +
-"     \n" +
-"    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); \n" +
-"} \n" +
+      var template = " \n" +" \n" +
+"// attribute vec3 aPosition; \n" +" \n" +
+"// attribute vec3 aNormal; \n" +" \n" +
+"attribute float triangleHeight; \n" +" \n" +
+" \n" +" \n" +
+"varying vec3 vPos; \n" +" \n" +
+"varying vec3 vNormal; \n" +" \n" +
+"varying float vTriangleHeight; \n" +" \n" +
+" \n" +" \n" +
+"void main() { \n" +" \n" +
+"    vPos = position; \n" +" \n" +
+"    vNormal = normalize(normal); \n" +" \n" +
+"    vTriangleHeight = triangleHeight; \n" +" \n" +
+"     \n" +" \n" +
+"    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); \n" +" \n" +
+"} \n" +" \n" +
 " \n" 
       params = params || {}
       for(var key in params) {
@@ -70151,98 +70074,98 @@ module.exports = function parse(params){
 
 },{}],719:[function(require,module,exports){
 module.exports = function parse(params){
-      var template = "// Extension of THREE.MirrorShader \n" +
-"precision mediump float; \n" +
-" \n" +
-"vec3 mod289(vec3 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec4 mod289(vec4 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec4 permute(vec4 x) {return mod289(((x*34.0)+1.0)*x);}vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}vec2 mod289(vec2 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec3 permute(vec3 x) {return mod289(((x*34.0)+1.0)*x);}float snoise(vec3 v){const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);vec3 i  = floor(v + dot(v, C.yyy) );vec3 x0 =   v - i + dot(i, C.xxx) ;vec3 g = step(x0.yzx, x0.xyz);vec3 l = 1.0 - g;vec3 i1 = min( g.xyz, l.zxy );vec3 i2 = max( g.xyz, l.zxy );vec3 x1 = x0 - i1 + C.xxx;vec3 x2 = x0 - i2 + C.yyy; vec3 x3 = x0 - D.yyy; i = mod289(i);vec4 p = permute( permute( permute(i.z + vec4(0.0, i1.z, i2.z, 1.0 ))+ i.y + vec4(0.0, i1.y, i2.y, 1.0 ))+ i.x + vec4(0.0, i1.x, i2.x, 1.0 ));float n_ = 0.142857142857; vec3  ns = n_ * D.wyz - D.xzx;vec4 j = p - 49.0 * floor(p * ns.z * ns.z); vec4 x_ = floor(j * ns.z);vec4 y_ = floor(j - 7.0 * x_ ); vec4 x = x_ *ns.x + ns.yyyy;vec4 y = y_ *ns.x + ns.yyyy;vec4 h = 1.0 - abs(x) - abs(y);vec4 b0 = vec4( x.xy, y.xy );vec4 b1 = vec4( x.zw, y.zw );vec4 s0 = floor(b0)*2.0 + 1.0;vec4 s1 = floor(b1)*2.0 + 1.0;vec4 sh = -step(h, vec4(0.0));vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;vec3 p0 = vec3(a0.xy,h.x);vec3 p1 = vec3(a0.zw,h.y);vec3 p2 = vec3(a1.xy,h.z);vec3 p3 = vec3(a1.zw,h.w);vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));p0 *= norm.x;p1 *= norm.y;p2 *= norm.z;p3 *= norm.w;vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);m = m * m;return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),dot(p2,x2), dot(p3,x3) ) );} float snoise(vec2 v) {const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);vec2 i  = floor(v + dot(v, C.yy) );vec2 x0 = v -   i + dot(i, C.xx);vec2 i1;i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);vec4 x12 = x0.xyxy + C.xxzz;x12.xy -= i1;i = mod289(i);vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))+ i.x + vec3(0.0, i1.x, 1.0 ));vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);m = m*m ;m = m*m ;vec3 x = 2.0 * fract(p * C.www) - 1.0;vec3 h = abs(x) - 0.5;vec3 ox = floor(x + 0.5);vec3 a0 = x - ox;m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );vec3 g;g.x  = a0.x  * x0.x  + h.x  * x0.y;g.yz = a0.yz * x12.xz + h.yz * x12.yw;return 130.0 * dot(m, g);} \n" +
-" \n" +
-" \n" +
-"uniform vec3 mirrorColor; \n" +
-"uniform sampler2D mirrorSampler; \n" +
-" \n" +
-"uniform vec3 uCamera; \n" +
-"uniform vec3 uLight; \n" +
-"uniform float uTime; \n" +
-" \n" +
-"varying vec4 mirrorCoord; \n" +
-"varying vec3 vnormal; \n" +
-"varying vec2 vuv; \n" +
-" \n" +
-"float blendOverlay(float base, float blend) { \n" +
-"    return( base < 0.5 ? ( 2.0 * base * blend ) : (1.0 - 2.0 * ( 1.0 - base ) * ( 1.0 - blend ) ) ); \n" +
-"} \n" +
-" \n" +
-"void main() { \n" +
-"    float cordNoise1 = 1.2 * snoise(vec3(vuv * 35.0, uTime * 2.6)); \n" +
-"    float cordNoise2 = 0.6 * snoise(vec3(vuv * 70.0, uTime * 4.8)); \n" +
-"    vec4 cord = mirrorCoord; \n" +
-"    cord.x += (cordNoise1 + cordNoise2); \n" +
-"    cord.y += (-cordNoise1 + cordNoise2); \n" +
-"    vec4 color = texture2DProj(mirrorSampler, cord); \n" +
-"    vec3 mc = vec3(0.7, 0.7, 0.72); \n" +
-"    // color = vec4(blendOverlay(mc.r, color.r), blendOverlay(mc.g, color.g), blendOverlay(mc.b, color.b), 1.0); \n" +
-"     \n" +
-"    vec3 c = mix(color.xyz, vec3(0.1, 0.5, 0.8), 0.0); \n" +
-"     \n" +
-"    float noiseWave = 1.9 * snoise(vec3(vuv * 25.0, uTime * 0.3)); \n" +
-"    float noiseAmp = 0.2 * snoise(vec3(vuv * 12.0, uTime * 1.3)); \n" +
-"     \n" +
-"    float wt = 0.4 * uTime; //waveTime \n" +
-"    float wa = 0.3 ; //waveAmp \n" +
-"    float ww = 100.0 ; //waveWidth \n" +
-"     \n" +
-"    float a1 = 0.16 * snoise(vec3(100.0*vuv, 0.4 *uTime)) ; \n" +
-"    a1 = (a1 + 1.0) * 0.5; \n" +
-"     \n" +
-"    float a3 = sin((ww + noiseWave) * vuv.x + wt) * cos((ww +noiseWave)* vuv.y + wt) * (wa +noiseAmp); \n" +
-"     \n" +
-"    wt *=2.0; wa /=2.0; ww *= 2.0; \n" +
-"    float a2 = sin(ww * vuv.x + wt) * cos(ww * vuv.y + wt ) * wa ; \n" +
-"    \n" +
-"    a2 = (a2 + 1.0) * 0.5; \n" +
-"    a3 = (a3 + 1.0) * 0.5; \n" +
-"     \n" +
-"    wt *=2.0; wa /=2.0; ww *= 2.0; \n" +
-"    float a4 = sin(ww * vuv.x + wt) * cos(ww * vuv.y + wt) * wa ; \n" +
-"    a4 = (a4 + 1.0) * 0.5; \n" +
-"     \n" +
-"     \n" +
-"    float a =  a4 + a3  + a1; \n" +
-"     \n" +
-"    a /= 3.0; \n" +
-"     \n" +
-"    a = clamp(a,0.0,1.0); \n" +
-"    \n" +
-"     \n" +
-"    vec3 cb = mc; \n" +
-"    vec3 cm = color.xyz; \n" +
-"     \n" +
-"     \n" +
-"    // c = (a > 0.5) ? cm : cb; \n" +
-"    // c = cm; \n" +
-"    c = c * a; \n" +
-"    // c += cb; \n" +
-"    // c = mix(cb, cm, a); \n" +
-" \n" +
-"     \n" +
-"     \n" +
-"     \n" +
-"    vec3 n = vec3(0.0, 1.0, 0.0); \n" +
-"     \n" +
-"    float ka = 0.4; \n" +
-"    vec3 li = normalize(uLight); \n" +
-"    float kd = 0.9 * clamp(dot(n, li), 0.0, 1.0); \n" +
-"     \n" +
-"    float ks = 1.5 * a * a * a * a * a; \n" +
-"     \n" +
-"    c = c * (ka + kd + ks); \n" +
-"     \n" +
-"    // c = cb * a; \n" +
-"     \n" +
-"    gl_FragColor.xyz = vec3(vuv, 1.0); \n" +
-"    gl_FragColor.xyz = c; \n" +
-"    gl_FragColor.a = 0.8; \n" +
-"  \n" +
+      var template = "// Extension of THREE.MirrorShader \n" +" \n" +
+"precision mediump float; \n" +" \n" +
+" \n" +" \n" +
+"vec3 mod289(vec3 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec4 mod289(vec4 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec4 permute(vec4 x) {return mod289(((x*34.0)+1.0)*x);}vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}vec2 mod289(vec2 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec3 permute(vec3 x) {return mod289(((x*34.0)+1.0)*x);}float snoise(vec3 v){const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);vec3 i  = floor(v + dot(v, C.yyy) );vec3 x0 =   v - i + dot(i, C.xxx) ;vec3 g = step(x0.yzx, x0.xyz);vec3 l = 1.0 - g;vec3 i1 = min( g.xyz, l.zxy );vec3 i2 = max( g.xyz, l.zxy );vec3 x1 = x0 - i1 + C.xxx;vec3 x2 = x0 - i2 + C.yyy; vec3 x3 = x0 - D.yyy; i = mod289(i);vec4 p = permute( permute( permute(i.z + vec4(0.0, i1.z, i2.z, 1.0 ))+ i.y + vec4(0.0, i1.y, i2.y, 1.0 ))+ i.x + vec4(0.0, i1.x, i2.x, 1.0 ));float n_ = 0.142857142857; vec3  ns = n_ * D.wyz - D.xzx;vec4 j = p - 49.0 * floor(p * ns.z * ns.z); vec4 x_ = floor(j * ns.z);vec4 y_ = floor(j - 7.0 * x_ ); vec4 x = x_ *ns.x + ns.yyyy;vec4 y = y_ *ns.x + ns.yyyy;vec4 h = 1.0 - abs(x) - abs(y);vec4 b0 = vec4( x.xy, y.xy );vec4 b1 = vec4( x.zw, y.zw );vec4 s0 = floor(b0)*2.0 + 1.0;vec4 s1 = floor(b1)*2.0 + 1.0;vec4 sh = -step(h, vec4(0.0));vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;vec3 p0 = vec3(a0.xy,h.x);vec3 p1 = vec3(a0.zw,h.y);vec3 p2 = vec3(a1.xy,h.z);vec3 p3 = vec3(a1.zw,h.w);vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));p0 *= norm.x;p1 *= norm.y;p2 *= norm.z;p3 *= norm.w;vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);m = m * m;return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),dot(p2,x2), dot(p3,x3) ) );} float snoise(vec2 v) {const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);vec2 i  = floor(v + dot(v, C.yy) );vec2 x0 = v -   i + dot(i, C.xx);vec2 i1;i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);vec4 x12 = x0.xyxy + C.xxzz;x12.xy -= i1;i = mod289(i);vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))+ i.x + vec3(0.0, i1.x, 1.0 ));vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);m = m*m ;m = m*m ;vec3 x = 2.0 * fract(p * C.www) - 1.0;vec3 h = abs(x) - 0.5;vec3 ox = floor(x + 0.5);vec3 a0 = x - ox;m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );vec3 g;g.x  = a0.x  * x0.x  + h.x  * x0.y;g.yz = a0.yz * x12.xz + h.yz * x12.yw;return 130.0 * dot(m, g);} \n" +" \n" +
+" \n" +" \n" +
+" \n" +" \n" +
+"uniform vec3 mirrorColor; \n" +" \n" +
+"uniform sampler2D mirrorSampler; \n" +" \n" +
+" \n" +" \n" +
+"uniform vec3 uCamera; \n" +" \n" +
+"uniform vec3 uLight; \n" +" \n" +
+"uniform float uTime; \n" +" \n" +
+" \n" +" \n" +
+"varying vec4 mirrorCoord; \n" +" \n" +
+"varying vec3 vnormal; \n" +" \n" +
+"varying vec2 vuv; \n" +" \n" +
+" \n" +" \n" +
+"float blendOverlay(float base, float blend) { \n" +" \n" +
+"    return( base < 0.5 ? ( 2.0 * base * blend ) : (1.0 - 2.0 * ( 1.0 - base ) * ( 1.0 - blend ) ) ); \n" +" \n" +
+"} \n" +" \n" +
+" \n" +" \n" +
+"void main() { \n" +" \n" +
+"    float cordNoise1 = 1.2 * snoise(vec3(vuv * 35.0, uTime * 1.8)); \n" +" \n" +
+"    float cordNoise2 = 0.4 * snoise(vec3(vuv * 70.0, uTime * 3.6)); \n" +" \n" +
+"    vec4 cord = mirrorCoord; \n" +" \n" +
+"    cord.x += (cordNoise1 + cordNoise2); \n" +" \n" +
+"    cord.y += (-cordNoise1 + cordNoise2); \n" +" \n" +
+"    vec4 color = texture2DProj(mirrorSampler, cord); \n" +" \n" +
+"    vec3 mc = vec3(0.7, 0.7, 0.72); \n" +" \n" +
+"    // color = vec4(blendOverlay(mc.r, color.r), blendOverlay(mc.g, color.g), blendOverlay(mc.b, color.b), 1.0); \n" +" \n" +
+"     \n" +" \n" +
+"    vec3 c = mix(color.xyz, vec3(0.1, 0.5, 0.8), 0.0); \n" +" \n" +
+"     \n" +" \n" +
+"    float noiseWave = 1.9 * snoise(vec3(vuv * 25.0, uTime * 0.3)); \n" +" \n" +
+"    float noiseAmp = 0.2 * snoise(vec3(vuv * 12.0, uTime * 1.3)); \n" +" \n" +
+"     \n" +" \n" +
+"    float wt = 0.4 * uTime; //waveTime \n" +" \n" +
+"    float wa = 0.3 ; //waveAmp \n" +" \n" +
+"    float ww = 100.0 ; //waveWidth \n" +" \n" +
+"     \n" +" \n" +
+"    float a1 = 0.16 * snoise(vec3(100.0*vuv, 0.4 *uTime)) ; \n" +" \n" +
+"    a1 = (a1 + 1.0) * 0.5; \n" +" \n" +
+"     \n" +" \n" +
+"    float a3 = sin((ww + noiseWave) * vuv.x + wt) * cos((ww +noiseWave)* vuv.y + wt) * (wa +noiseAmp); \n" +" \n" +
+"     \n" +" \n" +
+"    wt *=2.0; wa /=2.0; ww *= 2.0; \n" +" \n" +
+"    float a2 = sin(ww * vuv.x + wt) * cos(ww * vuv.y + wt ) * wa ; \n" +" \n" +
+"    \n" +" \n" +
+"    a2 = (a2 + 1.0) * 0.5; \n" +" \n" +
+"    a3 = (a3 + 1.0) * 0.5; \n" +" \n" +
+"     \n" +" \n" +
+"    wt *=2.0; wa /=2.0; ww *= 2.0; \n" +" \n" +
+"    float a4 = sin(ww * vuv.x + wt) * cos(ww * vuv.y + wt) * wa ; \n" +" \n" +
+"    a4 = (a4 + 1.0) * 0.5; \n" +" \n" +
+"     \n" +" \n" +
+"     \n" +" \n" +
+"    float a =  a4 + a3  + a1; \n" +" \n" +
+"     \n" +" \n" +
+"    a /= 3.0; \n" +" \n" +
+"     \n" +" \n" +
+"    a = clamp(a,0.0,1.0); \n" +" \n" +
+"    \n" +" \n" +
+"     \n" +" \n" +
+"    vec3 cb = mc; \n" +" \n" +
+"    vec3 cm = color.xyz; \n" +" \n" +
+"     \n" +" \n" +
+"     \n" +" \n" +
+"    // c = (a > 0.5) ? cm : cb; \n" +" \n" +
+"    // c = cm; \n" +" \n" +
+"    c = c * a; \n" +" \n" +
+"    // c += cb; \n" +" \n" +
+"    // c = mix(cb, cm, a); \n" +" \n" +
+" \n" +" \n" +
+"     \n" +" \n" +
+"     \n" +" \n" +
+"     \n" +" \n" +
+"    vec3 n = vec3(0.0, 1.0, 0.0); \n" +" \n" +
+"     \n" +" \n" +
+"    float ka = 0.4; \n" +" \n" +
+"    vec3 li = normalize(uLight); \n" +" \n" +
+"    float kd = 0.9 * clamp(dot(n, li), 0.0, 1.0); \n" +" \n" +
+"     \n" +" \n" +
+"    float ks = 1.7 * a * a * a * a * a; \n" +" \n" +
+"     \n" +" \n" +
+"    c = c * (ka + kd + ks); \n" +" \n" +
+"     \n" +" \n" +
+"    // c = cb * a; \n" +" \n" +
+"     \n" +" \n" +
+"    gl_FragColor.xyz = vec3(vuv, 1.0); \n" +" \n" +
+"    gl_FragColor.xyz = c; \n" +" \n" +
+"    gl_FragColor.a = 0.8; \n" +" \n" +
+"  \n" +" \n" +
 "} \n" 
       params = params || {}
       for(var key in params) {
@@ -70254,21 +70177,21 @@ module.exports = function parse(params){
 
 },{}],720:[function(require,module,exports){
 module.exports = function parse(params){
-      var template = "uniform mat4 textureMatrix; \n" +
-" \n" +
-"varying vec4 mirrorCoord; \n" +
-"varying vec3 vnormal; \n" +
-"varying vec2 vuv; \n" +
-"void main() { \n" +
-"     \n" +
-"    vuv = uv; \n" +
-"    vnormal = normalize(normal); \n" +
-"     \n" +
-"    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 ); \n" +
-"    vec4 worldPosition = modelMatrix * vec4( position, 1.0 ); \n" +
-"    mirrorCoord = textureMatrix * worldPosition; \n" +
-" \n" +
-"    gl_Position = projectionMatrix * mvPosition; \n" +
+      var template = "uniform mat4 textureMatrix; \n" +" \n" +
+" \n" +" \n" +
+"varying vec4 mirrorCoord; \n" +" \n" +
+"varying vec3 vnormal; \n" +" \n" +
+"varying vec2 vuv; \n" +" \n" +
+"void main() { \n" +" \n" +
+"     \n" +" \n" +
+"    vuv = uv; \n" +" \n" +
+"    vnormal = normalize(normal); \n" +" \n" +
+"     \n" +" \n" +
+"    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 ); \n" +" \n" +
+"    vec4 worldPosition = modelMatrix * vec4( position, 1.0 ); \n" +" \n" +
+"    mirrorCoord = textureMatrix * worldPosition; \n" +" \n" +
+" \n" +" \n" +
+"    gl_Position = projectionMatrix * mvPosition; \n" +" \n" +
 "} \n" 
       params = params || {}
       for(var key in params) {

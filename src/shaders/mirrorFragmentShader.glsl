@@ -20,8 +20,8 @@ float blendOverlay(float base, float blend) {
 }
 
 void main() {
-    float cordNoise1 = 1.2 * snoise(vec3(vuv * 35.0, uTime * 2.6));
-    float cordNoise2 = 0.6 * snoise(vec3(vuv * 70.0, uTime * 4.8));
+    float cordNoise1 = 1.2 * snoise(vec3(vuv * 35.0, uTime * 1.8));
+    float cordNoise2 = 0.4 * snoise(vec3(vuv * 70.0, uTime * 3.6));
     vec4 cord = mirrorCoord;
     cord.x += (cordNoise1 + cordNoise2);
     cord.y += (-cordNoise1 + cordNoise2);
@@ -80,7 +80,7 @@ void main() {
     vec3 li = normalize(uLight);
     float kd = 0.9 * clamp(dot(n, li), 0.0, 1.0);
     
-    float ks = 1.5 * a * a * a * a * a;
+    float ks = 1.7 * a * a * a * a * a;
     
     c = c * (ka + kd + ks);
     
