@@ -70173,8 +70173,10 @@ module.exports = function parse(params){
 "} \n" +
 " \n" +
 "void main() { \n" +
+" \n" +
 "    float cordNoise1 = 1.2 * snoise(vec3(vuv * 35.0, uTime * 1.9)); \n" +
 "    float cordNoise2 = 0.6 * snoise(vec3(vuv * 70.0, uTime * 3.6)); \n" +
+" \n" +
 "    vec4 cord = mirrorCoord; \n" +
 "    cord.x += (cordNoise1 + cordNoise2); \n" +
 "    cord.y += (-cordNoise1 + cordNoise2); \n" +
@@ -70248,7 +70250,7 @@ module.exports = function parse(params){
 "    vec3 li = normalize(uLight); \n" +
 "    float kd = 0.9 * clamp(dot(n, li), 0.0, 1.0); \n" +
 "     \n" +
-"    float ks = 1.5 * a * a * a * a * a; \n" +
+"    float ks = 1.7 * a * a * a * a * a; \n" +
 "     \n" +
 "    c = c * (ka + kd + ks); \n" +
 "     \n" +
