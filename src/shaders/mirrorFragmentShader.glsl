@@ -20,12 +20,27 @@ float blendOverlay(float base, float blend) {
 }
 
 void main() {
-    float cordNoise1 = 1.2 * snoise(vec3(vuv * 35.0, uTime * 2.6));
-    float cordNoise2 = 0.6 * snoise(vec3(vuv * 70.0, uTime * 4.8));
+    float cordNoise1 = 1.2 * snoise(vec3(vuv * 35.0, uTime * 1.9));
+    float cordNoise2 = 0.6 * snoise(vec3(vuv * 70.0, uTime * 3.6));
     vec4 cord = mirrorCoord;
     cord.x += (cordNoise1 + cordNoise2);
     cord.y += (-cordNoise1 + cordNoise2);
+    
+    //LP-filter
+    float off = 1.0/0.33;
+    float norm = 1.0/196.0;
+    vec3 f = vec3(4.0, 6.0, 4.0);
+    vec4 sum = vec4(0.0, 0.0, 0.0, 0.0);
+    for(int i = -1; i < 2; i += 1){
+        for(int j = -1; j < 2; j += 1){
+            vec2 newCoord = cord.xy + vec2(i,j) * off;
+            sum = sum + f[i + 2]*f[j + 2]*norm*texture2DProj(mirrorSampler, vec4(newCoord, cord.zw));
+        };
+    };
     vec4 color = texture2DProj(mirrorSampler, cord);
+    color = sum;
+    color.z += 0.1;
+    color = vec4(0.4, 0.7, 0.9, 0.9);
     vec3 mc = vec3(0.7, 0.7, 0.72);
     // color = vec4(blendOverlay(mc.r, color.r), blendOverlay(mc.g, color.g), blendOverlay(mc.b, color.b), 1.0);
     
@@ -89,5 +104,7 @@ void main() {
     gl_FragColor.xyz = vec3(vuv, 1.0);
     gl_FragColor.xyz = c;
     gl_FragColor.a = 0.8;
+    
+    
  
 }

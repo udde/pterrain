@@ -70173,12 +70173,27 @@ module.exports = function parse(params){
 "} \n" +
 " \n" +
 "void main() { \n" +
-"    float cordNoise1 = 1.2 * snoise(vec3(vuv * 35.0, uTime * 2.6)); \n" +
-"    float cordNoise2 = 0.6 * snoise(vec3(vuv * 70.0, uTime * 4.8)); \n" +
+"    float cordNoise1 = 1.2 * snoise(vec3(vuv * 35.0, uTime * 1.9)); \n" +
+"    float cordNoise2 = 0.6 * snoise(vec3(vuv * 70.0, uTime * 3.6)); \n" +
 "    vec4 cord = mirrorCoord; \n" +
 "    cord.x += (cordNoise1 + cordNoise2); \n" +
 "    cord.y += (-cordNoise1 + cordNoise2); \n" +
+"     \n" +
+"    //LP-filter \n" +
+"    float off = 1.0/0.33; \n" +
+"    float norm = 1.0/196.0; \n" +
+"    vec3 f = vec3(4.0, 6.0, 4.0); \n" +
+"    vec4 sum = vec4(0.0, 0.0, 0.0, 0.0); \n" +
+"    for(int i = -1; i < 2; i += 1){ \n" +
+"        for(int j = -1; j < 2; j += 1){ \n" +
+"            vec2 newCoord = cord.xy + vec2(i,j) * off; \n" +
+"            sum = sum + f[i + 2]*f[j + 2]*norm*texture2DProj(mirrorSampler, vec4(newCoord, cord.zw)); \n" +
+"        }; \n" +
+"    }; \n" +
 "    vec4 color = texture2DProj(mirrorSampler, cord); \n" +
+"    color = sum; \n" +
+"    color.z += 0.1; \n" +
+"    color = vec4(0.4, 0.7, 0.9, 0.9); \n" +
 "    vec3 mc = vec3(0.7, 0.7, 0.72); \n" +
 "    // color = vec4(blendOverlay(mc.r, color.r), blendOverlay(mc.g, color.g), blendOverlay(mc.b, color.b), 1.0); \n" +
 "     \n" +
@@ -70242,8 +70257,11 @@ module.exports = function parse(params){
 "    gl_FragColor.xyz = vec3(vuv, 1.0); \n" +
 "    gl_FragColor.xyz = c; \n" +
 "    gl_FragColor.a = 0.8; \n" +
+"     \n" +
+"     \n" +
 "  \n" +
-"} \n" 
+"} \n" +
+" \n" 
       params = params || {}
       for(var key in params) {
         var matcher = new RegExp("{{"+key+"}}","g")
@@ -70279,6 +70297,64 @@ module.exports = function parse(params){
     };
 
 },{}],721:[function(require,module,exports){
+module.exports = function parse(params){
+      var template = "precision mediump float; \n" +
+" \n" +
+"vec3 mod289(vec3 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec4 mod289(vec4 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec4 permute(vec4 x) {return mod289(((x*34.0)+1.0)*x);}vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}vec2 mod289(vec2 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec3 permute(vec3 x) {return mod289(((x*34.0)+1.0)*x);}float snoise(vec3 v){const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);vec3 i  = floor(v + dot(v, C.yyy) );vec3 x0 =   v - i + dot(i, C.xxx) ;vec3 g = step(x0.yzx, x0.xyz);vec3 l = 1.0 - g;vec3 i1 = min( g.xyz, l.zxy );vec3 i2 = max( g.xyz, l.zxy );vec3 x1 = x0 - i1 + C.xxx;vec3 x2 = x0 - i2 + C.yyy; vec3 x3 = x0 - D.yyy; i = mod289(i);vec4 p = permute( permute( permute(i.z + vec4(0.0, i1.z, i2.z, 1.0 ))+ i.y + vec4(0.0, i1.y, i2.y, 1.0 ))+ i.x + vec4(0.0, i1.x, i2.x, 1.0 ));float n_ = 0.142857142857; vec3  ns = n_ * D.wyz - D.xzx;vec4 j = p - 49.0 * floor(p * ns.z * ns.z); vec4 x_ = floor(j * ns.z);vec4 y_ = floor(j - 7.0 * x_ ); vec4 x = x_ *ns.x + ns.yyyy;vec4 y = y_ *ns.x + ns.yyyy;vec4 h = 1.0 - abs(x) - abs(y);vec4 b0 = vec4( x.xy, y.xy );vec4 b1 = vec4( x.zw, y.zw );vec4 s0 = floor(b0)*2.0 + 1.0;vec4 s1 = floor(b1)*2.0 + 1.0;vec4 sh = -step(h, vec4(0.0));vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;vec3 p0 = vec3(a0.xy,h.x);vec3 p1 = vec3(a0.zw,h.y);vec3 p2 = vec3(a1.xy,h.z);vec3 p3 = vec3(a1.zw,h.w);vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));p0 *= norm.x;p1 *= norm.y;p2 *= norm.z;p3 *= norm.w;vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);m = m * m;return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),dot(p2,x2), dot(p3,x3) ) );} float snoise(vec2 v) {const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);vec2 i  = floor(v + dot(v, C.yy) );vec2 x0 = v -   i + dot(i, C.xx);vec2 i1;i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);vec4 x12 = x0.xyxy + C.xxzz;x12.xy -= i1;i = mod289(i);vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))+ i.x + vec3(0.0, i1.x, 1.0 ));vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);m = m*m ;m = m*m ;vec3 x = 2.0 * fract(p * C.www) - 1.0;vec3 h = abs(x) - 0.5;vec3 ox = floor(x + 0.5);vec3 a0 = x - ox;m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );vec3 g;g.x  = a0.x  * x0.x  + h.x  * x0.y;g.yz = a0.yz * x12.xz + h.yz * x12.yw;return 130.0 * dot(m, g);} \n" +
+" \n" +
+" \n" +
+" \n" +
+"varying vec3 vpos; \n" +
+" \n" +
+"void main(){ \n" +
+"    vec3 c = vec3 (0.0, 0.6, 0.8); \n" +
+"    vec3 b = vec3(0.0, 0.6, 0.8); \n" +
+"    vec3 w = vec3(0.9, 0.9, 0.92); \n" +
+"     \n" +
+"    float n = 0.5 * snoise(0.000625 * vec3(vpos.x , vpos.y , vpos.z * 6.0 )); \n" +
+"    n += 0.25 * snoise(0.00125 * vpos); \n" +
+"    n += 0.125 * snoise(0.0025 * vpos);    \n" +
+"    // n += snoise(0.000025 * vec3(vpos.x * 40.0, vpos.y * 40.0, vpos.z * 40.0)); \n" +
+"     \n" +
+"    n /= 0.875; \n" +
+"     \n" +
+"    // w = mix(b, w , n + 0.5); \n" +
+"    c = mix(b, w, min(n + 0.5, 0.9)); \n" +
+"     \n" +
+"    // c = n > 0.1 ? w : b; \n" +
+"     \n" +
+"    gl_FragColor.xyz = c; \n" +
+"    gl_FragColor.a = 0.0; \n" +
+"} \n" 
+      params = params || {}
+      for(var key in params) {
+        var matcher = new RegExp("{{"+key+"}}","g")
+        template = template.replace(matcher, params[key])
+      }
+      return template
+    };
+
+},{}],722:[function(require,module,exports){
+module.exports = function parse(params){
+      var template = " \n" +
+"varying vec3 vpos; \n" +
+"void main() { \n" +
+"     \n" +
+"    vpos = position; \n" +
+"    vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 ); \n" +
+"    vec4 worldPosition = modelMatrix * vec4( position, 1.0 ); \n" +
+" \n" +
+"    gl_Position = projectionMatrix * mvPosition; \n" +
+"} \n" 
+      params = params || {}
+      for(var key in params) {
+        var matcher = new RegExp("{{"+key+"}}","g")
+        template = template.replace(matcher, params[key])
+      }
+      return template
+    };
+
+},{}],723:[function(require,module,exports){
 // threejs.org/license
 'use strict';var THREE={REVISION:"74dev"};"function"===typeof define&&define.amd?define("three",THREE):"undefined"!==typeof exports&&"undefined"!==typeof module&&(module.exports=THREE);void 0===Number.EPSILON&&(Number.EPSILON=Math.pow(2,-52));void 0===Math.sign&&(Math.sign=function(a){return 0>a?-1:0<a?1:+a});void 0===Function.prototype.name&&void 0!==Object.defineProperty&&Object.defineProperty(Function.prototype,"name",{get:function(){return this.toString().match(/^\s*function\s*(\S*)\s*\(/)[1]}});
 void 0===Object.assign&&Object.defineProperty(Object,"assign",{writable:!0,configurable:!0,value:function(a){if(void 0===a||null===a)throw new TypeError("Cannot convert first argument to object");for(var b=Object(a),c=1,d=arguments.length;c!==d;++c){var e=arguments[c];if(void 0!==e&&null!==e)for(var e=Object(e),f=Object.keys(e),g=0,h=f.length;g!==h;++g){var k=f[g],l=Object.getOwnPropertyDescriptor(e,k);void 0!==l&&l.enumerable&&(b[k]=e[k])}}return b}});THREE.MOUSE={LEFT:0,MIDDLE:1,RIGHT:2};
@@ -72993,7 +73069,7 @@ function init(){
     camera = new THREE.PerspectiveCamera(30, SCREEN_RATIO, 1, 10000);
     controls = new THREE.OrbitControls( camera );
     camera.up = new THREE.Vector3(0.0, 1.0, 0.0);
-    camera.position.set(1300, 280, 0);
+    camera.position.set(1280, 210, -280);
     camera.lookAt({x: 0, y: 0, z: 0 }); 
     
     //LIGHT
@@ -73016,22 +73092,27 @@ function init(){
         vs : require('../shaders/mirrorVertexShader.glsl')(),
         fs : require('../shaders/mirrorFragmentShader.glsl')()
     };
-     
+    var skyShaders = {
+        vs : require('../shaders/skyVertexShader.glsl')(),
+        fs : require('../shaders/skyFragmentShader.glsl')()
+    };
+    
     var skyGeo = new THREE.SphereGeometry(1600, 25, 25); 
     // var texture = THREE.TextureLoader( "img/sky.jpg" );
-    var material = new THREE.MeshBasicMaterial({ 
-        color: 0x33ccff, 
-        shading: THREE.FlatShading
+    var skyMaterial = new THREE.ShaderMaterial({ 
+        vertexShader: skyShaders.vs,
+        fragmentShader: skyShaders.fs,
     });
-    var sky = new THREE.Mesh(skyGeo, material);
+    var sky = new THREE.Mesh(skyGeo, skyMaterial);
     sky.material.side = THREE.BackSide;
+    sky.rotateX( - Math.PI / 2 );
     scene.add(sky);
     
     // clouds();
     
     
     //TERRAIN
-    var meterial = new THREE.ShaderMaterial( {
+    var terrainMaterial = new THREE.ShaderMaterial( {
         uniforms: {
             uCameraPos: {type: "v3", value: camera.position},
             uLightPos: {type: "v3", value: light.position},
@@ -73039,13 +73120,13 @@ function init(){
         vertexShader: groundShaders.vs,
         fragmentShader: groundShaders.fs,
     } );
-    var terrain = terrainGeometry(); //require('../js/terrainHeightDataGeneration.js')(THREE)
-    var terrainMesh = new THREE.Mesh(terrain, meterial);
+    var terrainGeo = terrainGeometry(); //require('../js/terrainHeightDataGeneration.js')(THREE)
+    var terrainMesh = new THREE.Mesh(terrainGeo, terrainMaterial);
     terrainMesh.position.y -= 50;
     scene.add(terrainMesh); 
     
     //WATER / MIRROR
-    var geometry = new THREE.PlaneGeometry( 3200, 3200, 200 , 200 );
+    var mirrorGeo = new THREE.PlaneGeometry( 3200, 3200, 200 , 200 );
     groundMirror = new THREE.Mirror( renderer, camera, { clipBias: 0.003,
 	   textureWidth: SCREEN_WIDTH, textureHeight: SCREEN_HEIGHT, color: 0x777777 } );
     //feed THREE.Mirror with own shaders/uniforms. TODO: make it look more like water...
@@ -73056,7 +73137,7 @@ function init(){
     groundMirror.material.uniforms["uCamera"] = {type: "v3", value: camera.position} ;
     groundMirror.material.uniforms["uTime"] = {type: "f", value: 0.0} ;  
     
-    var mirrorMesh = new THREE.Mesh( geometry, groundMirror.material );
+    var mirrorMesh = new THREE.Mesh( mirrorGeo, groundMirror.material );
 	mirrorMesh.add( groundMirror );
 	mirrorMesh.rotateX( - Math.PI / 2 );
     mirrorMesh.position.y = -93;
@@ -73089,6 +73170,8 @@ function render(){
     // renderer.render(scene, camera);
     
     controls.update();
+    
+    console.log(camera.position);
 }
 
 function updateStuff(){
@@ -73097,74 +73180,6 @@ function updateStuff(){
 
 
 
-function clouds(){
-    var geo = new THREE.SphereGeometry(120, 6, 6);
-    var material = new THREE.MeshBasicMaterial({
-        color: 0xeeeeff,
-        shading: THREE.FlatShading
-    });
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 700;
-    scene.add(cloud);
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 780;
-    cloud.position.x += 190;
-    scene.add(cloud);
-    var geo = new THREE.SphereGeometry(120, 6, 6);
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 740;
-    cloud.position.x -= 100;
-    cloud.position.z -= 110;
-    scene.add(cloud);
-    
-    var geo = new THREE.SphereGeometry(90, 6, 6);
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 740;
-    cloud.position.x += 60;
-    cloud.position.z -= 80;
-    scene.add(cloud);
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 740;
-    cloud.position.x += 10;
-    cloud.position.z -= 110;
-    scene.add(cloud);
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    var geo = new THREE.SphereGeometry(120, 6, 6);
-    var material = new THREE.MeshBasicMaterial({
-        color: 0xeeeeff,
-        shading: THREE.FlatShading
-    });
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 790;
-    cloud.position.x += 780;
-    scene.add(cloud);
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 880;
-    cloud.position.x += 910;
-    scene.add(cloud);
-    var geo = new THREE.SphereGeometry(120, 6, 6);
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 840;
-    cloud.position.x += 890;
-    cloud.position.z -= 180;
-    scene.add(cloud);
-    
-    
-}
 
 
-
-
-},{"../js/simplexNoiseImproved.js":716,"../shaders/groundFragmentshader.glsl":717,"../shaders/groundVertexshader.glsl":718,"../shaders/mirrorFragmentShader.glsl":719,"../shaders/mirrorVertexShader.glsl":720,"mathjs":221}]},{},[721]);
+},{"../js/simplexNoiseImproved.js":716,"../shaders/groundFragmentshader.glsl":717,"../shaders/groundVertexshader.glsl":718,"../shaders/mirrorFragmentShader.glsl":719,"../shaders/mirrorVertexShader.glsl":720,"../shaders/skyFragmentShader.glsl":721,"../shaders/skyVertexShader.glsl":722,"mathjs":221}]},{},[723]);

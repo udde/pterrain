@@ -2712,7 +2712,7 @@ function init(){
     camera = new THREE.PerspectiveCamera(30, SCREEN_RATIO, 1, 10000);
     controls = new THREE.OrbitControls( camera );
     camera.up = new THREE.Vector3(0.0, 1.0, 0.0);
-    camera.position.set(1300, 280, 0);
+    camera.position.set(1280, 210, -280);
     camera.lookAt({x: 0, y: 0, z: 0 }); 
     
     //LIGHT
@@ -2735,22 +2735,27 @@ function init(){
         vs : require('../shaders/mirrorVertexShader.glsl')(),
         fs : require('../shaders/mirrorFragmentShader.glsl')()
     };
-     
+    var skyShaders = {
+        vs : require('../shaders/skyVertexShader.glsl')(),
+        fs : require('../shaders/skyFragmentShader.glsl')()
+    };
+    
     var skyGeo = new THREE.SphereGeometry(1600, 25, 25); 
     // var texture = THREE.TextureLoader( "img/sky.jpg" );
-    var material = new THREE.MeshBasicMaterial({ 
-        color: 0x33ccff, 
-        shading: THREE.FlatShading
+    var skyMaterial = new THREE.ShaderMaterial({ 
+        vertexShader: skyShaders.vs,
+        fragmentShader: skyShaders.fs,
     });
-    var sky = new THREE.Mesh(skyGeo, material);
+    var sky = new THREE.Mesh(skyGeo, skyMaterial);
     sky.material.side = THREE.BackSide;
+    sky.rotateX( - Math.PI / 2 );
     scene.add(sky);
     
     // clouds();
     
     
     //TERRAIN
-    var meterial = new THREE.ShaderMaterial( {
+    var terrainMaterial = new THREE.ShaderMaterial( {
         uniforms: {
             uCameraPos: {type: "v3", value: camera.position},
             uLightPos: {type: "v3", value: light.position},
@@ -2758,13 +2763,13 @@ function init(){
         vertexShader: groundShaders.vs,
         fragmentShader: groundShaders.fs,
     } );
-    var terrain = terrainGeometry(); //require('../js/terrainHeightDataGeneration.js')(THREE)
-    var terrainMesh = new THREE.Mesh(terrain, meterial);
+    var terrainGeo = terrainGeometry(); //require('../js/terrainHeightDataGeneration.js')(THREE)
+    var terrainMesh = new THREE.Mesh(terrainGeo, terrainMaterial);
     terrainMesh.position.y -= 50;
     scene.add(terrainMesh); 
     
     //WATER / MIRROR
-    var geometry = new THREE.PlaneGeometry( 3200, 3200, 200 , 200 );
+    var mirrorGeo = new THREE.PlaneGeometry( 3200, 3200, 200 , 200 );
     groundMirror = new THREE.Mirror( renderer, camera, { clipBias: 0.003,
 	   textureWidth: SCREEN_WIDTH, textureHeight: SCREEN_HEIGHT, color: 0x777777 } );
     //feed THREE.Mirror with own shaders/uniforms. TODO: make it look more like water...
@@ -2775,7 +2780,7 @@ function init(){
     groundMirror.material.uniforms["uCamera"] = {type: "v3", value: camera.position} ;
     groundMirror.material.uniforms["uTime"] = {type: "f", value: 0.0} ;  
     
-    var mirrorMesh = new THREE.Mesh( geometry, groundMirror.material );
+    var mirrorMesh = new THREE.Mesh( mirrorGeo, groundMirror.material );
 	mirrorMesh.add( groundMirror );
 	mirrorMesh.rotateX( - Math.PI / 2 );
     mirrorMesh.position.y = -93;
@@ -2808,80 +2813,14 @@ function render(){
     // renderer.render(scene, camera);
     
     controls.update();
+    
+    console.log(camera.position);
 }
 
 function updateStuff(){
     groundMirror.material.uniforms["uTime"].value += 0.01; 
 }
 
-
-
-function clouds(){
-    var geo = new THREE.SphereGeometry(120, 6, 6);
-    var material = new THREE.MeshBasicMaterial({
-        color: 0xeeeeff,
-        shading: THREE.FlatShading
-    });
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 700;
-    scene.add(cloud);
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 780;
-    cloud.position.x += 190;
-    scene.add(cloud);
-    var geo = new THREE.SphereGeometry(120, 6, 6);
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 740;
-    cloud.position.x -= 100;
-    cloud.position.z -= 110;
-    scene.add(cloud);
-    
-    var geo = new THREE.SphereGeometry(90, 6, 6);
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 740;
-    cloud.position.x += 60;
-    cloud.position.z -= 80;
-    scene.add(cloud);
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 740;
-    cloud.position.x += 10;
-    cloud.position.z -= 110;
-    scene.add(cloud);
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    var geo = new THREE.SphereGeometry(120, 6, 6);
-    var material = new THREE.MeshBasicMaterial({
-        color: 0xeeeeff,
-        shading: THREE.FlatShading
-    });
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 790;
-    cloud.position.x += 780;
-    scene.add(cloud);
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 880;
-    cloud.position.x += 910;
-    scene.add(cloud);
-    var geo = new THREE.SphereGeometry(120, 6, 6);
-    var cloud = new THREE.Mesh(geo, material);
-    cloud.position.y += 840;
-    cloud.position.x += 890;
-    cloud.position.z -= 180;
-    scene.add(cloud);
-    
-    
-}
 
 
 
