@@ -70195,11 +70195,12 @@ module.exports = function parse(params){
 "    vec4 color = texture2DProj(mirrorSampler, cord); \n" +
 "    color = sum; \n" +
 "    color.z += 0.1; \n" +
-"    color = vec4(0.4, 0.7, 0.9, 0.9); \n" +
+"    // color = vec4(0.4, 0.7, 0.9, 0.9); \n" +
+"     \n" +
 "    vec3 mc = vec3(0.7, 0.7, 0.72); \n" +
 "    // color = vec4(blendOverlay(mc.r, color.r), blendOverlay(mc.g, color.g), blendOverlay(mc.b, color.b), 1.0); \n" +
 "     \n" +
-"    vec3 c = mix(color.xyz, vec3(0.1, 0.5, 0.8), 0.0); \n" +
+"    vec3 c = mix(color.xyz, vec3(0.1, 0.5, 0.8), 0.5); \n" +
 "     \n" +
 "    float noiseWave = 1.9 * snoise(vec3(vuv * 25.0, uTime * 0.3)); \n" +
 "    float noiseAmp = 0.2 * snoise(vec3(vuv * 12.0, uTime * 1.3)); \n" +
@@ -70258,7 +70259,7 @@ module.exports = function parse(params){
 "     \n" +
 "    gl_FragColor.xyz = vec3(vuv, 1.0); \n" +
 "    gl_FragColor.xyz = c; \n" +
-"    gl_FragColor.a = 0.8; \n" +
+"    gl_FragColor.a = 0.85; \n" +
 "     \n" +
 "     \n" +
 "  \n" +
