@@ -45,7 +45,7 @@ function init(){
         fs : require('../shaders/skyFragmentShader.glsl')()
     };
 
-    var skyGeo = new THREE.SphereGeometry(1600, 5, 5);
+    var skyGeo = new THREE.SphereGeometry(1600, 15, 15);
     // var texture = THREE.TextureLoader( "img/sky.jpg" );
     var skyMaterial = new THREE.ShaderMaterial({
         vertexShader: skyShaders.vs,

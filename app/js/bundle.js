@@ -72864,22 +72864,22 @@ THREE.TexturePass.prototype = {
 var math = require('mathjs');
 
 function swap(arr, i, j){
-    
+
 }
 function sort(arr){
-    
+
 }
 
 function terrainGeometry() {
-   
+
     var geometry = new THREE.BufferGeometry();
     var vertexData = generateTerrainData(0, 0);
     geometry.addAttribute( 'position', new THREE.BufferAttribute( vertexData.aPositionData, 3 ) );
     geometry.addAttribute( 'normal', new THREE.BufferAttribute( vertexData.aNormalData, 3 ) );
-    
+
     //stupid way of calculating triangle height max/min values
     var h = Float32Array.from(vertexData.aTriangleHeightData);
-    
+
     //Bugg - hardcode the values
     //this only works in chrome atm...
     // h.sort();
@@ -72892,15 +72892,15 @@ function terrainGeometry() {
         array[index] += math.abs(hMin);
         array[index] /= ( math.abs(hMin) + math.abs(hMax) );
     });
-    
+
     geometry.addAttribute( 'triangleHeight', new THREE.BufferAttribute( vertexData.aTriangleHeightData, 1 ) );
-    
+
     return geometry;
 }
 
 //generate the plane geometry. push the y positions with the height function and calculate normals
 function generateTerrainData(resX, resY) {
-    
+
     var gridResX = resX, gridResY = resY;
     gridResX = 200, gridResY = 200;
     var xScale = 16, yScale = 16;
@@ -72998,14 +72998,14 @@ function generateTerrainData(resX, resY) {
         aPositionData: aPositionData,
         aNormalData: aNormalData,
         aTriangleHeightData: aTriangleHeightData,
-        
+
         nVertices: nVertices
     };
     return returnData;
 }
 
 
-var simplexNoise = require('../js/simplexNoiseImproved.js');
+var simplexNoise = require('../js/simplexNoiseModified.js');
 var simplex = new simplexNoise();
 
 function getHeight(x ,y)
@@ -73013,32 +73013,32 @@ function getHeight(x ,y)
     var f = 0.125 / (128 * 1.0) ;
     var s = 2.0 * 16 / 0.9;
     var height = s * simplex.noise2D(1.16*f*x,1.0*f*y); //a
-    
+
     var d = math.sqrt(x*x + y*y);
     var b = 50*16;
-    
-    if(d > b ){ 
+
+    if(d > b ){
         var dd = 1.0 + (d-b)*0.01;
         height /= math.min(dd, 8); //
     }
-    
+
     s = s/2;
     f = f*2;
     height += s * simplex.noise2D(f*x, f*y);
 
     height =  height > 0.0 ? height * (math.pow(height, 0.5)) : height *0.8;
-    
+
     for (var i = 0; i < 2; i++) {
         s = s/2;
         f = f*2;
         height += s * simplex.noise2D(f*x, f*y);
     }
-    
+
     //boost hills to mountains
     var hl = 80.0;
     if(height > hl)
         height += 0.3*(height - hl)
-    
+
     //add depth to and variation/islands/cpaes to water
     var wl = 6.0;
     if(height < -wl)
@@ -73049,7 +73049,7 @@ function getHeight(x ,y)
         f = f*2;
         height += s * simplex.noise2D(f*x, f*y);
     }
-      
+
     return height;
 }
 
@@ -73100,7 +73100,7 @@ function init(){
         fs : require('../shaders/skyFragmentShader.glsl')()
     };
 
-    var skyGeo = new THREE.SphereGeometry(1600, 5, 5);
+    var skyGeo = new THREE.SphereGeometry(1600, 15, 15);
     // var texture = THREE.TextureLoader( "img/sky.jpg" );
     var skyMaterial = new THREE.ShaderMaterial({
         vertexShader: skyShaders.vs,
@@ -73180,4 +73180,4 @@ function updateStuff(){
     groundMirror.material.uniforms["uTime"].value += 0.01;
 }
 
-},{"../js/simplexNoiseImproved.js":716,"../shaders/groundFragmentshader.glsl":717,"../shaders/groundVertexshader.glsl":718,"../shaders/mirrorFragmentShader.glsl":719,"../shaders/mirrorVertexShader.glsl":720,"../shaders/skyFragmentShader.glsl":721,"../shaders/skyVertexShader.glsl":722,"mathjs":221}]},{},[723]);
+},{"../js/simplexNoiseModified.js":716,"../shaders/groundFragmentshader.glsl":717,"../shaders/groundVertexshader.glsl":718,"../shaders/mirrorFragmentShader.glsl":719,"../shaders/mirrorVertexShader.glsl":720,"../shaders/skyFragmentShader.glsl":721,"../shaders/skyVertexShader.glsl":722,"mathjs":221}]},{},[723]);
