@@ -2713,19 +2713,19 @@ function init(){
     controls = new THREE.OrbitControls( camera );
     camera.up = new THREE.Vector3(0.0, 1.0, 0.0);
     camera.position.set(1280, 210, -280);
-    camera.lookAt({x: 0, y: 0, z: 0 }); 
-    
+    camera.lookAt({x: 0, y: 0, z: 0 });
+
     //LIGHT
     light = new THREE.DirectionalLight(0xdfebff, 1.75);
     light.position.set(0.0, 1100.0, 500.0);
     scene.add(light);
-    
+
     //RENDERER
     renderer = new THREE.WebGLRenderer();
     renderer.setSize( SCREEN_WIDTH, SCREEN_HEIGHT );
     renderer.setClearColor( 0xbbbbbb );
     container.appendChild(renderer.domElement);
-    
+
     //SHADERS
     var groundShaders = {
         vs : require('../shaders/groundVertexshader.glsl')(),
@@ -2739,10 +2739,10 @@ function init(){
         vs : require('../shaders/skyVertexShader.glsl')(),
         fs : require('../shaders/skyFragmentShader.glsl')()
     };
-    
-    var skyGeo = new THREE.SphereGeometry(1600, 25, 25); 
+
+    var skyGeo = new THREE.SphereGeometry(1600, 5, 5);
     // var texture = THREE.TextureLoader( "img/sky.jpg" );
-    var skyMaterial = new THREE.ShaderMaterial({ 
+    var skyMaterial = new THREE.ShaderMaterial({
         vertexShader: skyShaders.vs,
         fragmentShader: skyShaders.fs,
     });
@@ -2750,10 +2750,9 @@ function init(){
     sky.material.side = THREE.BackSide;
     sky.rotateX( - Math.PI / 2 );
     scene.add(sky);
-    
+
     // clouds();
-    
-    
+
     //TERRAIN
     var terrainMaterial = new THREE.ShaderMaterial( {
         uniforms: {
@@ -2766,8 +2765,8 @@ function init(){
     var terrainGeo = terrainGeometry(); //require('../js/terrainHeightDataGeneration.js')(THREE)
     var terrainMesh = new THREE.Mesh(terrainGeo, terrainMaterial);
     terrainMesh.position.y -= 50;
-    scene.add(terrainMesh); 
-    
+    scene.add(terrainMesh);
+
     //WATER / MIRROR
     var mirrorGeo = new THREE.PlaneGeometry( 3200, 3200, 200 , 200 );
     groundMirror = new THREE.Mirror( renderer, camera, { clipBias: 0.003,
@@ -2778,12 +2777,12 @@ function init(){
     groundMirror.material.transparent = true;
     groundMirror.material.uniforms["uLight"] = {type: "v3", value: light.position} ;
     groundMirror.material.uniforms["uCamera"] = {type: "v3", value: camera.position} ;
-    groundMirror.material.uniforms["uTime"] = {type: "f", value: 0.0} ;  
-    
+    groundMirror.material.uniforms["uTime"] = {type: "f", value: 0.0} ;
+
     var mirrorMesh = new THREE.Mesh( mirrorGeo, groundMirror.material );
 	mirrorMesh.add( groundMirror );
 	mirrorMesh.rotateX( - Math.PI / 2 );
-    mirrorMesh.position.y = -93;
+    mirrorMesh.position.y = -93; //magic numer to set the water level so it looks nice
     mirrorMesh.geometry.normalsNeedUpdate = true;
     mirrorMesh.geometry.computeFaceNormals();
     mirrorMesh.geometry.computeVertexNormals();
@@ -2796,31 +2795,27 @@ function init(){
     fxaaPass.uniforms.resolution.value.set(1 / (SCREEN_WIDTH), 1 / (SCREEN_HEIGHT));
     var toScreen = new THREE.ShaderPass(THREE.CopyShader);
     toScreen.renderToScreen = true;
-    
-    
+
+
     composer.addPass(renderPass);
     composer.addPass(fxaaPass);
     composer.addPass(toScreen);
-}   
+}
 
 //RENDER-LOOP
 function render(){
     requestAnimationFrame( render );
-    
+
     updateStuff();
     groundMirror.render();
     composer.render();
     // renderer.render(scene, camera);
-    
+
     controls.update();
-    
-    console.log(camera.position);
+
+    // console.log(camera.position);
 }
 
 function updateStuff(){
-    groundMirror.material.uniforms["uTime"].value += 0.01; 
+    groundMirror.material.uniforms["uTime"].value += 0.01;
 }
-
-
-
-
