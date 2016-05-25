@@ -27,7 +27,7 @@ void main() {
     vec4 cord = mirrorCoord;
     cord.x += (cordNoise1 + cordNoise2);
     cord.y += (-cordNoise1 + cordNoise2);
-    
+
     //LP-filter
     float off = 1.0/0.33;
     float norm = 1.0/196.0;
@@ -43,71 +43,67 @@ void main() {
     color = sum;
     color.z += 0.1;
     // color = vec4(0.4, 0.7, 0.9, 0.9);
-    
+
     vec3 mc = vec3(0.7, 0.7, 0.72);
     // color = vec4(blendOverlay(mc.r, color.r), blendOverlay(mc.g, color.g), blendOverlay(mc.b, color.b), 1.0);
-    
+
     vec3 c = mix(color.xyz, vec3(0.1, 0.5, 0.8), 0.5);
-    
+
     float noiseWave = 1.9 * snoise(vec3(vuv * 25.0, uTime * 0.3));
     float noiseAmp = 0.2 * snoise(vec3(vuv * 12.0, uTime * 1.3));
-    
+
     float wt = 0.4 * uTime; //waveTime
     float wa = 0.3 ; //waveAmp
     float ww = 100.0 ; //waveWidth
-    
+
     float a1 = 0.16 * snoise(vec3(100.0*vuv, 0.4 *uTime)) ;
     a1 = (a1 + 1.0) * 0.5;
-    
+
     float a3 = sin((ww + noiseWave) * vuv.x + wt) * cos((ww +noiseWave)* vuv.y + wt) * (wa +noiseAmp);
-    
+
     wt *=2.0; wa /=2.0; ww *= 2.0;
     float a2 = sin(ww * vuv.x + wt) * cos(ww * vuv.y + wt ) * wa ;
-   
+
     a2 = (a2 + 1.0) * 0.5;
     a3 = (a3 + 1.0) * 0.5;
-    
+
     wt *=2.0; wa /=2.0; ww *= 2.0;
     float a4 = sin(ww * vuv.x + wt) * cos(ww * vuv.y + wt) * wa ;
     a4 = (a4 + 1.0) * 0.5;
-    
-    
+
+
     float a =  a4 + a3  + a1;
-    
+
     a /= 3.0;
-    
+
     a = clamp(a,0.0,1.0);
-   
-    
+
+
     vec3 cb = mc;
     vec3 cm = color.xyz;
-    
-    
+
+
     // c = (a > 0.5) ? cm : cb;
     // c = cm;
     c = c * a;
     // c += cb;
     // c = mix(cb, cm, a);
 
-    
-    
-    
+
     vec3 n = vec3(0.0, 1.0, 0.0);
-    
+
     float ka = 0.4;
     vec3 li = normalize(uLight);
     float kd = 0.9 * clamp(dot(n, li), 0.0, 1.0);
-    
+
     float ks = 1.7 * a * a * a * a * a;
-    
+
     c = c * (ka + kd + ks);
-    
+
     // c = cb * a;
-    
+
     gl_FragColor.xyz = vec3(vuv, 1.0);
     gl_FragColor.xyz = c;
     gl_FragColor.a = 0.85;
-    
-    
- 
+
 }

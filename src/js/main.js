@@ -75,52 +75,47 @@ function init(){
     //WATER / MIRROR
     var mirrorGeo = new THREE.PlaneGeometry( 3200, 3200, 200 , 200 );
     groundMirror = new THREE.Mirror( renderer, camera, { clipBias: 0.003,
-	   textureWidth: SCREEN_WIDTH, textureHeight: SCREEN_HEIGHT, color: 0x777777 } );
-    //feed THREE.Mirror with own shaders/uniforms. TODO: make it look more like water...
-    groundMirror.material.vertexShader = mirrorShaders.vs;
-    groundMirror.material.fragmentShader = mirrorShaders.fs;
-    groundMirror.material.transparent = true;
-    groundMirror.material.uniforms["uLight"] = {type: "v3", value: light.position} ;
-    groundMirror.material.uniforms["uCamera"] = {type: "v3", value: camera.position} ;
-    groundMirror.material.uniforms["uTime"] = {type: "f", value: 0.0} ;
+        textureWidth: SCREEN_WIDTH, textureHeight: SCREEN_HEIGHT, color: 0x777777 } );
+        //feed THREE.Mirror with own shaders/uniforms. TODO: make it look more like water...
+        groundMirror.material.vertexShader = mirrorShaders.vs;
+        groundMirror.material.fragmentShader = mirrorShaders.fs;
+        groundMirror.material.transparent = true;
+        groundMirror.material.uniforms["uLight"] = {type: "v3", value: light.position} ;
+        groundMirror.material.uniforms["uCamera"] = {type: "v3", value: camera.position} ;
+        groundMirror.material.uniforms["uTime"] = {type: "f", value: 0.0} ;
 
-    var mirrorMesh = new THREE.Mesh( mirrorGeo, groundMirror.material );
-	mirrorMesh.add( groundMirror );
-	mirrorMesh.rotateX( - Math.PI / 2 );
-    mirrorMesh.position.y = -93; //magic numer to set the water level so it looks nice
-    mirrorMesh.geometry.normalsNeedUpdate = true;
-    mirrorMesh.geometry.computeFaceNormals();
-    mirrorMesh.geometry.computeVertexNormals();
-	scene.add( mirrorMesh );
+        var mirrorMesh = new THREE.Mesh( mirrorGeo, groundMirror.material );
+        mirrorMesh.add( groundMirror );
+        mirrorMesh.rotateX( - Math.PI / 2 );
+        mirrorMesh.position.y = -93; //set water level in scene
+        mirrorMesh.geometry.normalsNeedUpdate = true;
+        mirrorMesh.geometry.computeFaceNormals();
+        mirrorMesh.geometry.computeVertexNormals();
+        scene.add( mirrorMesh );
 
-    // MP-RENDERING COMPOSER
-    composer = new THREE.EffectComposer( renderer );
-    var renderPass = new THREE.RenderPass(scene, camera);
-    var fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
-    fxaaPass.uniforms.resolution.value.set(1 / (SCREEN_WIDTH), 1 / (SCREEN_HEIGHT));
-    var toScreen = new THREE.ShaderPass(THREE.CopyShader);
-    toScreen.renderToScreen = true;
+        // MP-RENDERING COMPOSER
+        composer = new THREE.EffectComposer( renderer );
+        var renderPass = new THREE.RenderPass(scene, camera);
+        var fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
+        fxaaPass.uniforms.resolution.value.set(1 / (SCREEN_WIDTH), 1 / (SCREEN_HEIGHT));
+        var toScreen = new THREE.ShaderPass(THREE.CopyShader);
+        toScreen.renderToScreen = true;
 
 
-    composer.addPass(renderPass);
-    composer.addPass(fxaaPass);
-    composer.addPass(toScreen);
-}
+        composer.addPass(renderPass);
+        composer.addPass(fxaaPass);
+        composer.addPass(toScreen);
+    }
 
-//RENDER-LOOP
-function render(){
-    requestAnimationFrame( render );
+    //RENDER-LOOP
+    function render(){
+        requestAnimationFrame( render );
+        updateStuff();
+        groundMirror.render();
+        composer.render();
+        controls.update();
+    }
 
-    updateStuff();
-    groundMirror.render();
-    composer.render();
-    // renderer.render(scene, camera);
-
-    controls.update();
-
-    // console.log(camera.position);
-}
-
-function updateStuff(){
-    groundMirror.material.uniforms["uTime"].value += 0.01;
-}
+    function updateStuff(){
+        groundMirror.material.uniforms["uTime"].value += 0.01;
+    }

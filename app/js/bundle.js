@@ -69586,7 +69586,7 @@ var F2 = 0.5 * (Math.sqrt(3.0) - 1.0),
 
 function SimplexNoise(random) {
     //modified to work with this static array. copied from stegus implementation
- var arrayen = [151,160,137,91,90,15,
+ var feed = [151,160,137,91,90,15,
   131,13,201,95,96,53,194,233,7,225,140,36,103,30,69,142,8,99,37,240,21,10,23,
   190, 6,148,247,120,234,75,0,26,197,62,94,252,219,203,117,35,11,32,57,177,33,
   88,237,149,56,87,174,20,125,136,171,168, 68,175,74,165,71,134,139,48,27,166,
@@ -69616,7 +69616,7 @@ function SimplexNoise(random) {
     this.perm = new Uint8Array(512);
     this.permMod12 = new Uint8Array(512);
     for (var i = 0; i < 256; i++) {
-        this.p[i] = arrayen[i];
+        this.p[i] = feed[i];
     }
     for (i = 0; i < 512; i++) {
         this.perm[i] = this.p[i & 255];
@@ -69976,7 +69976,7 @@ if (typeof module !== 'undefined') {
 },{}],717:[function(require,module,exports){
 module.exports = function parse(params){
       var template = "precision highp float; \n" +
-"//stegu noise \n" +
+" \n" +
 "vec3 mod289(vec3 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec4 mod289(vec4 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec4 permute(vec4 x) {return mod289(((x*34.0)+1.0)*x);}vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}vec2 mod289(vec2 x) {return x - floor(x * (1.0 / 289.0)) * 289.0;}vec3 permute(vec3 x) {return mod289(((x*34.0)+1.0)*x);}float snoise(vec3 v){const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);vec3 i  = floor(v + dot(v, C.yyy) );vec3 x0 =   v - i + dot(i, C.xxx) ;vec3 g = step(x0.yzx, x0.xyz);vec3 l = 1.0 - g;vec3 i1 = min( g.xyz, l.zxy );vec3 i2 = max( g.xyz, l.zxy );vec3 x1 = x0 - i1 + C.xxx;vec3 x2 = x0 - i2 + C.yyy; vec3 x3 = x0 - D.yyy; i = mod289(i);vec4 p = permute( permute( permute(i.z + vec4(0.0, i1.z, i2.z, 1.0 ))+ i.y + vec4(0.0, i1.y, i2.y, 1.0 ))+ i.x + vec4(0.0, i1.x, i2.x, 1.0 ));float n_ = 0.142857142857; vec3  ns = n_ * D.wyz - D.xzx;vec4 j = p - 49.0 * floor(p * ns.z * ns.z); vec4 x_ = floor(j * ns.z);vec4 y_ = floor(j - 7.0 * x_ ); vec4 x = x_ *ns.x + ns.yyyy;vec4 y = y_ *ns.x + ns.yyyy;vec4 h = 1.0 - abs(x) - abs(y);vec4 b0 = vec4( x.xy, y.xy );vec4 b1 = vec4( x.zw, y.zw );vec4 s0 = floor(b0)*2.0 + 1.0;vec4 s1 = floor(b1)*2.0 + 1.0;vec4 sh = -step(h, vec4(0.0));vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;vec3 p0 = vec3(a0.xy,h.x);vec3 p1 = vec3(a0.zw,h.y);vec3 p2 = vec3(a1.xy,h.z);vec3 p3 = vec3(a1.zw,h.w);vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));p0 *= norm.x;p1 *= norm.y;p2 *= norm.z;p3 *= norm.w;vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);m = m * m;return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1),dot(p2,x2), dot(p3,x3) ) );} float snoise(vec2 v) {const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);vec2 i  = floor(v + dot(v, C.yy) );vec2 x0 = v -   i + dot(i, C.xx);vec2 i1;i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);vec4 x12 = x0.xyxy + C.xxzz;x12.xy -= i1;i = mod289(i);vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 ))+ i.x + vec3(0.0, i1.x, 1.0 ));vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);m = m*m ;m = m*m ;vec3 x = 2.0 * fract(p * C.www) - 1.0;vec3 h = abs(x) - 0.5;vec3 ox = floor(x + 0.5);vec3 a0 = x - ox;m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );vec3 g;g.x  = a0.x  * x0.x  + h.x  * x0.y;g.yz = a0.yz * x12.xz + h.yz * x12.yw;return 130.0 * dot(m, g);} \n" +
 " \n" +
 " \n" +
@@ -69988,18 +69988,14 @@ module.exports = function parse(params){
 "varying float vTriangleHeight; \n" +
 " \n" +
 "void main() { \n" +
-"    // vec3 uCameraPos = vec3(0.0, 0.5, -0.5);  \n" +
-"     \n" +
-"    vec3 n = vNormal; \n" +
-"    float h = vTriangleHeight; \n" +
-"     \n" +
+"    // vec3 uCameraPos = vec3(0.0, 0.5, -0.5); \n" +
+" \n" +
 "    float waterLevel = 0.303; \n" +
 "    float sandLevel = 0.33; \n" +
 "    float grassLevel = 0.4; \n" +
 "    float mountainLevel = 0.77; \n" +
 "    float snowLevel = 1.1; \n" +
-"     \n" +
-"     \n" +
+" \n" +
 "    vec3 beige = vec3(213,200,119)/255.0; \n" +
 "    vec3 green = vec3(38,116,39)/255.0; \n" +
 "    vec3 green2 = vec3(33,106,13)/255.0; \n" +
@@ -70008,27 +70004,32 @@ module.exports = function parse(params){
 "    vec3 gray = vec3(60,57,55)/255.0; \n" +
 "    vec3 gray2 = vec3(70,67,65)/255.0; \n" +
 "    vec3 white = vec3(227,229,240)/255.0; \n" +
-"    vec3 c = gray; \n" +
+"    vec3 c = gray; // resulting color \n" +
 " \n" +
-"     \n" +
-"    float ka = 0.2; \n" +
 "    vec3 li = normalize(uLightPos); \n" +
+"    vec3 n = vNormal; \n" +
+" \n" +
+"    float h = vTriangleHeight; \n" +
+" \n" +
+"    float ka = 0.2; \n" +
 "    float kd = 0.5 * clamp(dot(n, li), 0.0, 1.0); \n" +
 " \n" +
 "    vec3 r = normalize(2.0*n*(dot(n,li)) - li); \n" +
 "    vec3 v = normalize(uCameraPos - vPos); \n" +
+" \n" +
 "    float ks = 0.0 * clamp(pow(dot(r,v),4.0), 0.0, 1.0); \n" +
 " \n" +
 "    float lo = sandLevel; \n" +
 "    float u = 0.5; \n" +
-"    if(vTriangleHeight < sandLevel ){ \n" +
+"    if(h < sandLevel ){ \n" +
 "        c = beige + min(h*2.0, 0.4); \n" +
 "        c = c - 0.05*snoise(vec2(vPos.x * 0.3,vPos.y * 0.3)); \n" +
 "        ks = 0.0 * clamp(pow(dot(r,v),1.0), 0.0, 1.0); \n" +
 "    } \n" +
+" \n" +
 "    float upper = sandLevel + 0.00; \n" +
-"    float lower = sandLevel -0.05; \n" +
-"    if(vTriangleHeight > lower && vTriangleHeight < upper){ \n" +
+"    float lower = sandLevel - 0.05; \n" +
+"    if(h > lower && h < upper){ \n" +
 "        float range = upper - lower; \n" +
 "        float x = (h-lower)/range; \n" +
 "        c = beige + min(h*2.0, 0.4); \n" +
@@ -70036,16 +70037,17 @@ module.exports = function parse(params){
 "        c = mix(c,green,x); \n" +
 "        ks = 0.0 * clamp(pow(dot(r,v),8.0), 0.0, 1.0); \n" +
 "    } \n" +
+" \n" +
 "    vec3 grass = snoise(1000.0*vec2(sin(100.0*h),cos(0.1*h))) < 0.0 ? green : green2; \n" +
 "    vec3 dirt = snoise(1000.0*vec2(h,h)) < 0.0 ? brown : brown2; \n" +
 "    vec3 stone = snoise(1000.0*vec2(h,h)) < 0.0 ? gray : gray2; \n" +
-"     \n" +
+" \n" +
 "    if(h > upper && h < grassLevel){ \n" +
 "        c = grass; \n" +
 "        ka = 0.16; \n" +
 "         ks = 0.0 * clamp(pow(dot(r,v),8.0), 0.0, 1.0); \n" +
 "    } \n" +
-"     \n" +
+" \n" +
 "    lower = grassLevel - 0.05; \n" +
 "    upper = grassLevel + 0.05; \n" +
 "    if(h > lower && h < upper){ \n" +
@@ -70055,10 +70057,10 @@ module.exports = function parse(params){
 "        ka = 0.18; \n" +
 "        ks = 0.0 * clamp(pow(dot(r,v),8.0), 0.0, 1.0); \n" +
 "    } \n" +
-"     \n" +
+" \n" +
 "    lower = upper; \n" +
 "    upper = grassLevel + 0.23; \n" +
-"    if(vTriangleHeight > lower && vTriangleHeight < upper){ \n" +
+"    if(h > lower && h < upper){ \n" +
 "        float range = upper - lower; \n" +
 "        float x = (h-lower)/range; \n" +
 "        // c = mix(green,brown,x); \n" +
@@ -70070,7 +70072,7 @@ module.exports = function parse(params){
 "            ks = 0.0 * clamp(pow(dot(r,v),6.0), 0.0, 1.0); \n" +
 "        } \n" +
 "    } \n" +
-"    if(vTriangleHeight > upper){ \n" +
+"    if(h > upper){ \n" +
 "        c = stone; \n" +
 "        ks = 0.2 * clamp(pow(dot(r,v),5.0), 0.0, 1.0); \n" +
 "        if(vNormal.y > 0.95){ \n" +
@@ -70080,13 +70082,13 @@ module.exports = function parse(params){
 "            } \n" +
 "        } \n" +
 "    } \n" +
-"    if(vTriangleHeight > mountainLevel){ \n" +
+"    if(h > mountainLevel){ \n" +
 "        c = white; \n" +
 "        ks = 0.3 * clamp(pow(dot(r,v),3.0), 0.0, 1.0); \n" +
 "    } \n" +
 " \n" +
 "    // OVAN Här \n" +
-"     \n" +
+" \n" +
 "    //polygon flat normal \n" +
 "    // vec3 fdx = normalize(dFdx( uCamera - vPos )); \n" +
 "    // vec3 fdy = normalize(dFdy( uCamera - vPos )); \n" +
@@ -70101,12 +70103,12 @@ module.exports = function parse(params){
 "    // spec = vSnow < 2.0 ? spec : 3.0 * spec; \n" +
 "    // // c = ambient + diffuse;// + spec; \n" +
 "    // c = ambient + diffuse + spec; \n" +
-"     \n" +
-"     \n" +
+" \n" +
+" \n" +
 "    vec3 ambient = ka * c; \n" +
 "    vec3 diffuse = kd * c; \n" +
 "    vec3 spec = ks * (vec3(1.0,1.0,1.0) + c); \n" +
-"     \n" +
+" \n" +
 "    gl_FragColor.xyz = ambient + diffuse + spec; \n" +
 "    gl_FragColor.a = 1.0; \n" +
 "} \n" +
@@ -70180,7 +70182,7 @@ module.exports = function parse(params){
 "    vec4 cord = mirrorCoord; \n" +
 "    cord.x += (cordNoise1 + cordNoise2); \n" +
 "    cord.y += (-cordNoise1 + cordNoise2); \n" +
-"     \n" +
+" \n" +
 "    //LP-filter \n" +
 "    float off = 1.0/0.33; \n" +
 "    float norm = 1.0/196.0; \n" +
@@ -70196,73 +70198,69 @@ module.exports = function parse(params){
 "    color = sum; \n" +
 "    color.z += 0.1; \n" +
 "    // color = vec4(0.4, 0.7, 0.9, 0.9); \n" +
-"     \n" +
+" \n" +
 "    vec3 mc = vec3(0.7, 0.7, 0.72); \n" +
 "    // color = vec4(blendOverlay(mc.r, color.r), blendOverlay(mc.g, color.g), blendOverlay(mc.b, color.b), 1.0); \n" +
-"     \n" +
+" \n" +
 "    vec3 c = mix(color.xyz, vec3(0.1, 0.5, 0.8), 0.5); \n" +
-"     \n" +
+" \n" +
 "    float noiseWave = 1.9 * snoise(vec3(vuv * 25.0, uTime * 0.3)); \n" +
 "    float noiseAmp = 0.2 * snoise(vec3(vuv * 12.0, uTime * 1.3)); \n" +
-"     \n" +
+" \n" +
 "    float wt = 0.4 * uTime; //waveTime \n" +
 "    float wa = 0.3 ; //waveAmp \n" +
 "    float ww = 100.0 ; //waveWidth \n" +
-"     \n" +
+" \n" +
 "    float a1 = 0.16 * snoise(vec3(100.0*vuv, 0.4 *uTime)) ; \n" +
 "    a1 = (a1 + 1.0) * 0.5; \n" +
-"     \n" +
+" \n" +
 "    float a3 = sin((ww + noiseWave) * vuv.x + wt) * cos((ww +noiseWave)* vuv.y + wt) * (wa +noiseAmp); \n" +
-"     \n" +
+" \n" +
 "    wt *=2.0; wa /=2.0; ww *= 2.0; \n" +
 "    float a2 = sin(ww * vuv.x + wt) * cos(ww * vuv.y + wt ) * wa ; \n" +
-"    \n" +
+" \n" +
 "    a2 = (a2 + 1.0) * 0.5; \n" +
 "    a3 = (a3 + 1.0) * 0.5; \n" +
-"     \n" +
+" \n" +
 "    wt *=2.0; wa /=2.0; ww *= 2.0; \n" +
 "    float a4 = sin(ww * vuv.x + wt) * cos(ww * vuv.y + wt) * wa ; \n" +
 "    a4 = (a4 + 1.0) * 0.5; \n" +
-"     \n" +
-"     \n" +
+" \n" +
+" \n" +
 "    float a =  a4 + a3  + a1; \n" +
-"     \n" +
+" \n" +
 "    a /= 3.0; \n" +
-"     \n" +
+" \n" +
 "    a = clamp(a,0.0,1.0); \n" +
-"    \n" +
-"     \n" +
+" \n" +
+" \n" +
 "    vec3 cb = mc; \n" +
 "    vec3 cm = color.xyz; \n" +
-"     \n" +
-"     \n" +
+" \n" +
+" \n" +
 "    // c = (a > 0.5) ? cm : cb; \n" +
 "    // c = cm; \n" +
 "    c = c * a; \n" +
 "    // c += cb; \n" +
 "    // c = mix(cb, cm, a); \n" +
 " \n" +
-"     \n" +
-"     \n" +
-"     \n" +
+" \n" +
 "    vec3 n = vec3(0.0, 1.0, 0.0); \n" +
-"     \n" +
+" \n" +
 "    float ka = 0.4; \n" +
 "    vec3 li = normalize(uLight); \n" +
 "    float kd = 0.9 * clamp(dot(n, li), 0.0, 1.0); \n" +
-"     \n" +
+" \n" +
 "    float ks = 1.7 * a * a * a * a * a; \n" +
-"     \n" +
+" \n" +
 "    c = c * (ka + kd + ks); \n" +
-"     \n" +
+" \n" +
 "    // c = cb * a; \n" +
-"     \n" +
+" \n" +
 "    gl_FragColor.xyz = vec3(vuv, 1.0); \n" +
 "    gl_FragColor.xyz = c; \n" +
 "    gl_FragColor.a = 0.85; \n" +
-"     \n" +
-"     \n" +
-"  \n" +
+" \n" +
 "} \n" +
 " \n" 
       params = params || {}
@@ -72880,7 +72878,7 @@ function terrainGeometry() {
     //stupid way of calculating triangle height max/min values
     var h = Float32Array.from(vertexData.aTriangleHeightData);
 
-    //Bugg - hardcode the values
+    //Bugg!! - hardcoded the values
     //this only works in chrome atm...
     // h.sort();
     // var hMax = h[h.length-1]; var hMin = h[0];
@@ -72888,19 +72886,27 @@ function terrainGeometry() {
     var hMin = -145.72349548339844;
     // debugger;
 
+    //normalize the values in triangleHeightData (0-1 values)
     vertexData.aTriangleHeightData.forEach(function(val, index, array){
         array[index] += math.abs(hMin);
         array[index] /= ( math.abs(hMin) + math.abs(hMax) );
     });
 
-    geometry.addAttribute( 'triangleHeight', new THREE.BufferAttribute( vertexData.aTriangleHeightData, 1 ) );
+    //add the heightData for each triangle to the Three object. Each vertex now knows with triangle it belongs to
+    geometry.addAttribute( 'triangleHeight', new THREE.BufferAttribute( vertexData.aTriangleHeightData, 1 ));
 
     return geometry;
 }
 
-//generate the plane geometry. push the y positions with the height function and calculate normals
+//generate the plane geometry. push the y positions with the height function and calculate new normals
+//2d grid -> triangles. for flat shading: vertices only belongs to 1 triangle and holds that triangles height/level.
+// data is returned in Float32Arrays ready for GLbuffers
+
+//todo: X,Z coordinates are uneffected could be noised aswell
+
 function generateTerrainData(resX, resY) {
 
+    //this is a mess and half the variables are proboably redundant
     var gridResX = resX, gridResY = resY;
     gridResX = 200, gridResY = 200;
     var xScale = 16, yScale = 16;
@@ -72922,6 +72928,7 @@ function generateTerrainData(resX, resY) {
         var x = X  * xScale;
         var y = Y  * yScale;
 
+        //calculate Y-values for the vertices in triangle 1
         aPositionData[i   ] = x
         aPositionData[i+2 ] = y
         aPositionData[i+1 ] = getHeight(aPositionData[i] + offsetX, aPositionData[i + 2] + offsetY)
@@ -72936,6 +72943,7 @@ function generateTerrainData(resX, resY) {
 
         var triangleHeight1 = (aPositionData[i+1] + aPositionData[i+4] + aPositionData[i+7]) / 3 ;
 
+        //calc the first normal
         var normal1 = math.cross([
             aPositionData[i + 3] - aPositionData[i + 0],
             aPositionData[i + 4] - aPositionData[i + 1],
@@ -72946,6 +72954,7 @@ function generateTerrainData(resX, resY) {
             aPositionData[i + 8] - aPositionData[i + 5]
         ]);
 
+        //calculate Y-values for the vertices in triangle 1
         aPositionData[i+ 9] = x+xScale
         aPositionData[i+11] = y
         aPositionData[i+10] = getHeight(aPositionData[i + 9] + offsetX, aPositionData[i + 11] + offsetY)
@@ -72960,13 +72969,7 @@ function generateTerrainData(resX, resY) {
 
         var tirangleHeight2 = (aPositionData[i+10] + aPositionData[i+13] + aPositionData[i+16]) / 3;
 
-        aTriangleHeightData[triangleHeightDataPos + 0] = triangleHeight1;
-        aTriangleHeightData[triangleHeightDataPos + 1] = triangleHeight1;
-        aTriangleHeightData[triangleHeightDataPos + 2] = triangleHeight1;
-        aTriangleHeightData[triangleHeightDataPos + 3] = tirangleHeight2;
-        aTriangleHeightData[triangleHeightDataPos + 4] = tirangleHeight2;
-        aTriangleHeightData[triangleHeightDataPos + 5] = tirangleHeight2;
-        triangleHeightDataPos += 6;
+
 
         //calc the second normal
         var normal2 = math.cross([
@@ -72992,6 +72995,15 @@ function generateTerrainData(resX, resY) {
                 aNormalData[ii + i + 2] = normal2[2];
             }
         }
+
+        //set the height data
+        aTriangleHeightData[triangleHeightDataPos + 0] = triangleHeight1;
+        aTriangleHeightData[triangleHeightDataPos + 1] = triangleHeight1;
+        aTriangleHeightData[triangleHeightDataPos + 2] = triangleHeight1;
+        aTriangleHeightData[triangleHeightDataPos + 3] = tirangleHeight2;
+        aTriangleHeightData[triangleHeightDataPos + 4] = tirangleHeight2;
+        aTriangleHeightData[triangleHeightDataPos + 5] = tirangleHeight2;
+        triangleHeightDataPos += 6;
     }
 
     var returnData = {
@@ -73001,6 +73013,7 @@ function generateTerrainData(resX, resY) {
 
         nVertices: nVertices
     };
+
     return returnData;
 }
 
@@ -73008,21 +73021,23 @@ function generateTerrainData(resX, resY) {
 var simplexNoise = require('../js/simplexNoiseModified.js');
 var simplex = new simplexNoise();
 
+//function generating height value for a 2d position
 function getHeight(x ,y)
 {
-    var f = 0.125 / (128 * 1.0) ;
-    var s = 2.0 * 16 / 0.9;
-    var height = s * simplex.noise2D(1.16*f*x,1.0*f*y); //a
+    //Idea: Fractal noise: Scale * noise(Freq) + 0.5*Scale*noise(2*Freq) + 0.25*Scale.....
 
-    var d = math.sqrt(x*x + y*y);
-    var b = 50*16;
+    var f = 0.125 / (128 * 1.0) ; //frequence
+    var s = 2.0 * 16 / 0.9; //scale
+    var height = s * simplex.noise2D(1.16*f*x,1.0*f*y); //height/amplitude
 
+    var d = math.sqrt(x*x + y*y); //distance form center
+    var b = 50*16; //border of center of the scene (making the center of the scene more intresting)
     if(d > b ){
-        var dd = 1.0 + (d-b)*0.01;
-        height /= math.min(dd, 8); //
+        var factor = 1.0 + (d-b)*0.01;
+        height /= math.min(factor, 8); //terrain outside the center is gradual lowerd
     }
 
-    s = s/2;
+    s = s/2; //half scale, double frequence
     f = f*2;
     height += s * simplex.noise2D(f*x, f*y);
 
@@ -73040,7 +73055,7 @@ function getHeight(x ,y)
         height += 0.3*(height - hl)
 
     //add depth to and variation/islands/cpaes to water
-    var wl = 6.0;
+    var wl = 6.0; //set waterlevel
     if(height < -wl)
         height += 3*(height + wl)
 
@@ -73130,54 +73145,49 @@ function init(){
     //WATER / MIRROR
     var mirrorGeo = new THREE.PlaneGeometry( 3200, 3200, 200 , 200 );
     groundMirror = new THREE.Mirror( renderer, camera, { clipBias: 0.003,
-	   textureWidth: SCREEN_WIDTH, textureHeight: SCREEN_HEIGHT, color: 0x777777 } );
-    //feed THREE.Mirror with own shaders/uniforms. TODO: make it look more like water...
-    groundMirror.material.vertexShader = mirrorShaders.vs;
-    groundMirror.material.fragmentShader = mirrorShaders.fs;
-    groundMirror.material.transparent = true;
-    groundMirror.material.uniforms["uLight"] = {type: "v3", value: light.position} ;
-    groundMirror.material.uniforms["uCamera"] = {type: "v3", value: camera.position} ;
-    groundMirror.material.uniforms["uTime"] = {type: "f", value: 0.0} ;
+        textureWidth: SCREEN_WIDTH, textureHeight: SCREEN_HEIGHT, color: 0x777777 } );
+        //feed THREE.Mirror with own shaders/uniforms. TODO: make it look more like water...
+        groundMirror.material.vertexShader = mirrorShaders.vs;
+        groundMirror.material.fragmentShader = mirrorShaders.fs;
+        groundMirror.material.transparent = true;
+        groundMirror.material.uniforms["uLight"] = {type: "v3", value: light.position} ;
+        groundMirror.material.uniforms["uCamera"] = {type: "v3", value: camera.position} ;
+        groundMirror.material.uniforms["uTime"] = {type: "f", value: 0.0} ;
 
-    var mirrorMesh = new THREE.Mesh( mirrorGeo, groundMirror.material );
-	mirrorMesh.add( groundMirror );
-	mirrorMesh.rotateX( - Math.PI / 2 );
-    mirrorMesh.position.y = -93; //magic numer to set the water level so it looks nice
-    mirrorMesh.geometry.normalsNeedUpdate = true;
-    mirrorMesh.geometry.computeFaceNormals();
-    mirrorMesh.geometry.computeVertexNormals();
-	scene.add( mirrorMesh );
+        var mirrorMesh = new THREE.Mesh( mirrorGeo, groundMirror.material );
+        mirrorMesh.add( groundMirror );
+        mirrorMesh.rotateX( - Math.PI / 2 );
+        mirrorMesh.position.y = -93; //set water level in scene
+        mirrorMesh.geometry.normalsNeedUpdate = true;
+        mirrorMesh.geometry.computeFaceNormals();
+        mirrorMesh.geometry.computeVertexNormals();
+        scene.add( mirrorMesh );
 
-    // MP-RENDERING COMPOSER
-    composer = new THREE.EffectComposer( renderer );
-    var renderPass = new THREE.RenderPass(scene, camera);
-    var fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
-    fxaaPass.uniforms.resolution.value.set(1 / (SCREEN_WIDTH), 1 / (SCREEN_HEIGHT));
-    var toScreen = new THREE.ShaderPass(THREE.CopyShader);
-    toScreen.renderToScreen = true;
+        // MP-RENDERING COMPOSER
+        composer = new THREE.EffectComposer( renderer );
+        var renderPass = new THREE.RenderPass(scene, camera);
+        var fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
+        fxaaPass.uniforms.resolution.value.set(1 / (SCREEN_WIDTH), 1 / (SCREEN_HEIGHT));
+        var toScreen = new THREE.ShaderPass(THREE.CopyShader);
+        toScreen.renderToScreen = true;
 
 
-    composer.addPass(renderPass);
-    composer.addPass(fxaaPass);
-    composer.addPass(toScreen);
-}
+        composer.addPass(renderPass);
+        composer.addPass(fxaaPass);
+        composer.addPass(toScreen);
+    }
 
-//RENDER-LOOP
-function render(){
-    requestAnimationFrame( render );
+    //RENDER-LOOP
+    function render(){
+        requestAnimationFrame( render );
+        updateStuff();
+        groundMirror.render();
+        composer.render();
+        controls.update();
+    }
 
-    updateStuff();
-    groundMirror.render();
-    composer.render();
-    // renderer.render(scene, camera);
-
-    controls.update();
-
-    // console.log(camera.position);
-}
-
-function updateStuff(){
-    groundMirror.material.uniforms["uTime"].value += 0.01;
-}
+    function updateStuff(){
+        groundMirror.material.uniforms["uTime"].value += 0.01;
+    }
 
 },{"../js/simplexNoiseModified.js":716,"../shaders/groundFragmentshader.glsl":717,"../shaders/groundVertexshader.glsl":718,"../shaders/mirrorFragmentShader.glsl":719,"../shaders/mirrorVertexShader.glsl":720,"../shaders/skyFragmentShader.glsl":721,"../shaders/skyVertexShader.glsl":722,"mathjs":221}]},{},[723]);

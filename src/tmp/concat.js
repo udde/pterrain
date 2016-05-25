@@ -2520,7 +2520,7 @@ function terrainGeometry() {
     //stupid way of calculating triangle height max/min values
     var h = Float32Array.from(vertexData.aTriangleHeightData);
 
-    //Bugg - hardcode the values
+    //Bugg!! - hardcoded the values
     //this only works in chrome atm...
     // h.sort();
     // var hMax = h[h.length-1]; var hMin = h[0];
@@ -2528,19 +2528,27 @@ function terrainGeometry() {
     var hMin = -145.72349548339844;
     // debugger;
 
+    //normalize the values in triangleHeightData (0-1 values)
     vertexData.aTriangleHeightData.forEach(function(val, index, array){
         array[index] += math.abs(hMin);
         array[index] /= ( math.abs(hMin) + math.abs(hMax) );
     });
 
-    geometry.addAttribute( 'triangleHeight', new THREE.BufferAttribute( vertexData.aTriangleHeightData, 1 ) );
+    //add the heightData for each triangle to the Three object. Each vertex now knows with triangle it belongs to
+    geometry.addAttribute( 'triangleHeight', new THREE.BufferAttribute( vertexData.aTriangleHeightData, 1 ));
 
     return geometry;
 }
 
-//generate the plane geometry. push the y positions with the height function and calculate normals
+//generate the plane geometry. push the y positions with the height function and calculate new normals
+//2d grid -> triangles. for flat shading: vertices only belongs to 1 triangle and holds that triangles height/level.
+// data is returned in Float32Arrays ready for GLbuffers
+
+//todo: X,Z coordinates are uneffected could be noised aswell
+
 function generateTerrainData(resX, resY) {
 
+    //this is a mess and half the variables are proboably redundant
     var gridResX = resX, gridResY = resY;
     gridResX = 200, gridResY = 200;
     var xScale = 16, yScale = 16;
@@ -2562,6 +2570,7 @@ function generateTerrainData(resX, resY) {
         var x = X  * xScale;
         var y = Y  * yScale;
 
+        //calculate Y-values for the vertices in triangle 1
         aPositionData[i   ] = x
         aPositionData[i+2 ] = y
         aPositionData[i+1 ] = getHeight(aPositionData[i] + offsetX, aPositionData[i + 2] + offsetY)
@@ -2576,6 +2585,7 @@ function generateTerrainData(resX, resY) {
 
         var triangleHeight1 = (aPositionData[i+1] + aPositionData[i+4] + aPositionData[i+7]) / 3 ;
 
+        //calc the first normal
         var normal1 = math.cross([
             aPositionData[i + 3] - aPositionData[i + 0],
             aPositionData[i + 4] - aPositionData[i + 1],
@@ -2586,6 +2596,7 @@ function generateTerrainData(resX, resY) {
             aPositionData[i + 8] - aPositionData[i + 5]
         ]);
 
+        //calculate Y-values for the vertices in triangle 1
         aPositionData[i+ 9] = x+xScale
         aPositionData[i+11] = y
         aPositionData[i+10] = getHeight(aPositionData[i + 9] + offsetX, aPositionData[i + 11] + offsetY)
@@ -2600,13 +2611,7 @@ function generateTerrainData(resX, resY) {
 
         var tirangleHeight2 = (aPositionData[i+10] + aPositionData[i+13] + aPositionData[i+16]) / 3;
 
-        aTriangleHeightData[triangleHeightDataPos + 0] = triangleHeight1;
-        aTriangleHeightData[triangleHeightDataPos + 1] = triangleHeight1;
-        aTriangleHeightData[triangleHeightDataPos + 2] = triangleHeight1;
-        aTriangleHeightData[triangleHeightDataPos + 3] = tirangleHeight2;
-        aTriangleHeightData[triangleHeightDataPos + 4] = tirangleHeight2;
-        aTriangleHeightData[triangleHeightDataPos + 5] = tirangleHeight2;
-        triangleHeightDataPos += 6;
+
 
         //calc the second normal
         var normal2 = math.cross([
@@ -2632,6 +2637,15 @@ function generateTerrainData(resX, resY) {
                 aNormalData[ii + i + 2] = normal2[2];
             }
         }
+
+        //set the height data
+        aTriangleHeightData[triangleHeightDataPos + 0] = triangleHeight1;
+        aTriangleHeightData[triangleHeightDataPos + 1] = triangleHeight1;
+        aTriangleHeightData[triangleHeightDataPos + 2] = triangleHeight1;
+        aTriangleHeightData[triangleHeightDataPos + 3] = tirangleHeight2;
+        aTriangleHeightData[triangleHeightDataPos + 4] = tirangleHeight2;
+        aTriangleHeightData[triangleHeightDataPos + 5] = tirangleHeight2;
+        triangleHeightDataPos += 6;
     }
 
     var returnData = {
@@ -2641,6 +2655,7 @@ function generateTerrainData(resX, resY) {
 
         nVertices: nVertices
     };
+
     return returnData;
 }
 
@@ -2648,21 +2663,23 @@ function generateTerrainData(resX, resY) {
 var simplexNoise = require('../js/simplexNoiseModified.js');
 var simplex = new simplexNoise();
 
+//function generating height value for a 2d position
 function getHeight(x ,y)
 {
-    var f = 0.125 / (128 * 1.0) ;
-    var s = 2.0 * 16 / 0.9;
-    var height = s * simplex.noise2D(1.16*f*x,1.0*f*y); //a
+    //Idea: Fractal noise: Scale * noise(Freq) + 0.5*Scale*noise(2*Freq) + 0.25*Scale.....
 
-    var d = math.sqrt(x*x + y*y);
-    var b = 50*16;
+    var f = 0.125 / (128 * 1.0) ; //frequence
+    var s = 2.0 * 16 / 0.9; //scale
+    var height = s * simplex.noise2D(1.16*f*x,1.0*f*y); //height/amplitude
 
+    var d = math.sqrt(x*x + y*y); //distance form center
+    var b = 50*16; //border of center of the scene (making the center of the scene more intresting)
     if(d > b ){
-        var dd = 1.0 + (d-b)*0.01;
-        height /= math.min(dd, 8); //
+        var factor = 1.0 + (d-b)*0.01;
+        height /= math.min(factor, 8); //terrain outside the center is gradual lowerd
     }
 
-    s = s/2;
+    s = s/2; //half scale, double frequence
     f = f*2;
     height += s * simplex.noise2D(f*x, f*y);
 
@@ -2680,7 +2697,7 @@ function getHeight(x ,y)
         height += 0.3*(height - hl)
 
     //add depth to and variation/islands/cpaes to water
-    var wl = 6.0;
+    var wl = 6.0; //set waterlevel
     if(height < -wl)
         height += 3*(height + wl)
 
@@ -2770,52 +2787,47 @@ function init(){
     //WATER / MIRROR
     var mirrorGeo = new THREE.PlaneGeometry( 3200, 3200, 200 , 200 );
     groundMirror = new THREE.Mirror( renderer, camera, { clipBias: 0.003,
-	   textureWidth: SCREEN_WIDTH, textureHeight: SCREEN_HEIGHT, color: 0x777777 } );
-    //feed THREE.Mirror with own shaders/uniforms. TODO: make it look more like water...
-    groundMirror.material.vertexShader = mirrorShaders.vs;
-    groundMirror.material.fragmentShader = mirrorShaders.fs;
-    groundMirror.material.transparent = true;
-    groundMirror.material.uniforms["uLight"] = {type: "v3", value: light.position} ;
-    groundMirror.material.uniforms["uCamera"] = {type: "v3", value: camera.position} ;
-    groundMirror.material.uniforms["uTime"] = {type: "f", value: 0.0} ;
+        textureWidth: SCREEN_WIDTH, textureHeight: SCREEN_HEIGHT, color: 0x777777 } );
+        //feed THREE.Mirror with own shaders/uniforms. TODO: make it look more like water...
+        groundMirror.material.vertexShader = mirrorShaders.vs;
+        groundMirror.material.fragmentShader = mirrorShaders.fs;
+        groundMirror.material.transparent = true;
+        groundMirror.material.uniforms["uLight"] = {type: "v3", value: light.position} ;
+        groundMirror.material.uniforms["uCamera"] = {type: "v3", value: camera.position} ;
+        groundMirror.material.uniforms["uTime"] = {type: "f", value: 0.0} ;
 
-    var mirrorMesh = new THREE.Mesh( mirrorGeo, groundMirror.material );
-	mirrorMesh.add( groundMirror );
-	mirrorMesh.rotateX( - Math.PI / 2 );
-    mirrorMesh.position.y = -93; //magic numer to set the water level so it looks nice
-    mirrorMesh.geometry.normalsNeedUpdate = true;
-    mirrorMesh.geometry.computeFaceNormals();
-    mirrorMesh.geometry.computeVertexNormals();
-	scene.add( mirrorMesh );
+        var mirrorMesh = new THREE.Mesh( mirrorGeo, groundMirror.material );
+        mirrorMesh.add( groundMirror );
+        mirrorMesh.rotateX( - Math.PI / 2 );
+        mirrorMesh.position.y = -93; //set water level in scene
+        mirrorMesh.geometry.normalsNeedUpdate = true;
+        mirrorMesh.geometry.computeFaceNormals();
+        mirrorMesh.geometry.computeVertexNormals();
+        scene.add( mirrorMesh );
 
-    // MP-RENDERING COMPOSER
-    composer = new THREE.EffectComposer( renderer );
-    var renderPass = new THREE.RenderPass(scene, camera);
-    var fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
-    fxaaPass.uniforms.resolution.value.set(1 / (SCREEN_WIDTH), 1 / (SCREEN_HEIGHT));
-    var toScreen = new THREE.ShaderPass(THREE.CopyShader);
-    toScreen.renderToScreen = true;
+        // MP-RENDERING COMPOSER
+        composer = new THREE.EffectComposer( renderer );
+        var renderPass = new THREE.RenderPass(scene, camera);
+        var fxaaPass = new THREE.ShaderPass(THREE.FXAAShader);
+        fxaaPass.uniforms.resolution.value.set(1 / (SCREEN_WIDTH), 1 / (SCREEN_HEIGHT));
+        var toScreen = new THREE.ShaderPass(THREE.CopyShader);
+        toScreen.renderToScreen = true;
 
 
-    composer.addPass(renderPass);
-    composer.addPass(fxaaPass);
-    composer.addPass(toScreen);
-}
+        composer.addPass(renderPass);
+        composer.addPass(fxaaPass);
+        composer.addPass(toScreen);
+    }
 
-//RENDER-LOOP
-function render(){
-    requestAnimationFrame( render );
+    //RENDER-LOOP
+    function render(){
+        requestAnimationFrame( render );
+        updateStuff();
+        groundMirror.render();
+        composer.render();
+        controls.update();
+    }
 
-    updateStuff();
-    groundMirror.render();
-    composer.render();
-    // renderer.render(scene, camera);
-
-    controls.update();
-
-    // console.log(camera.position);
-}
-
-function updateStuff(){
-    groundMirror.material.uniforms["uTime"].value += 0.01;
-}
+    function updateStuff(){
+        groundMirror.material.uniforms["uTime"].value += 0.01;
+    }
