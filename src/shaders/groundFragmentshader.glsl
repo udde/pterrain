@@ -11,8 +11,6 @@ varying vec3 vNormal;
 varying float vTriangleHeight;
 
 void main() {
-    // vec3 uCameraPos = vec3(0.0, 0.5, -0.5);
-
     float waterLevel = 0.303;
     float sandLevel = 0.33;
     float grassLevel = 0.4;
@@ -22,7 +20,7 @@ void main() {
     vec3 beige = vec3(213,200,119)/255.0;
     vec3 green = vec3(38,116,39)/255.0;
     vec3 green2 = vec3(33,106,13)/255.0;
-    vec3 brown = vec3(85,62,42)/255.0; //rgb(83,68,57)
+    vec3 brown = vec3(85,62,42)/255.0;
     vec3 brown2 = vec3(77,52,32)/255.0;
     vec3 gray = vec3(60,57,55)/255.0;
     vec3 gray2 = vec3(70,67,65)/255.0;
@@ -95,6 +93,7 @@ void main() {
             ks = 0.0 * clamp(pow(dot(r,v),6.0), 0.0, 1.0);
         }
     }
+    
     if(h > upper){
         c = stone;
         ks = 0.2 * clamp(pow(dot(r,v),5.0), 0.0, 1.0);
@@ -105,28 +104,11 @@ void main() {
             }
         }
     }
+    
     if(h > mountainLevel){
         c = white;
         ks = 0.3 * clamp(pow(dot(r,v),3.0), 0.0, 1.0);
     }
-
-    // OVAN Här
-
-    //polygon flat normal
-    // vec3 fdx = normalize(dFdx( uCamera - vPos ));
-    // vec3 fdy = normalize(dFdy( uCamera - vPos ));
-    // vec3 nn = normalize( cross( fdx, fdy ) );
-
-    // blue = blue + 0.125*snoise(100.0*vec2(0.1*vUv.x, vUv.y));
-
-    //// r = 2n(n*l) - l
-    // //ks * (r*v)^a
-    //
-    // spec = vHeight < 0.5 ? spec * 0.1 : spec;
-    // spec = vSnow < 2.0 ? spec : 3.0 * spec;
-    // // c = ambient + diffuse;// + spec;
-    // c = ambient + diffuse + spec;
-
 
     vec3 ambient = ka * c;
     vec3 diffuse = kd * c;
@@ -136,5 +118,3 @@ void main() {
     gl_FragColor.a = 1.0;
 }
 
-//kolla normal vinkel vs top = snö
-//kolla triangle height för färgton

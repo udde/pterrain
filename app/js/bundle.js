@@ -70170,10 +70170,6 @@ module.exports = function parse(params){
 "varying vec3 vnormal; \n" +
 "varying vec2 vuv; \n" +
 " \n" +
-"float blendOverlay(float base, float blend) { \n" +
-"    return( base < 0.5 ? ( 2.0 * base * blend ) : (1.0 - 2.0 * ( 1.0 - base ) * ( 1.0 - blend ) ) ); \n" +
-"} \n" +
-" \n" +
 "void main() { \n" +
 " \n" +
 "    float cordNoise1 = 1.2 * snoise(vec3(vuv * 35.0, uTime * 1.9)); \n" +
@@ -70197,10 +70193,6 @@ module.exports = function parse(params){
 "    vec4 color = texture2DProj(mirrorSampler, cord); \n" +
 "    color = sum; \n" +
 "    color.z += 0.1; \n" +
-"    // color = vec4(0.4, 0.7, 0.9, 0.9); \n" +
-" \n" +
-"    vec3 mc = vec3(0.7, 0.7, 0.72); \n" +
-"    // color = vec4(blendOverlay(mc.r, color.r), blendOverlay(mc.g, color.g), blendOverlay(mc.b, color.b), 1.0); \n" +
 " \n" +
 "    vec3 c = mix(color.xyz, vec3(0.1, 0.5, 0.8), 0.5); \n" +
 " \n" +
@@ -70226,41 +70218,21 @@ module.exports = function parse(params){
 "    float a4 = sin(ww * vuv.x + wt) * cos(ww * vuv.y + wt) * wa ; \n" +
 "    a4 = (a4 + 1.0) * 0.5; \n" +
 " \n" +
-" \n" +
 "    float a =  a4 + a3  + a1; \n" +
-" \n" +
 "    a /= 3.0; \n" +
-" \n" +
 "    a = clamp(a,0.0,1.0); \n" +
 " \n" +
-" \n" +
-"    vec3 cb = mc; \n" +
-"    vec3 cm = color.xyz; \n" +
-" \n" +
-" \n" +
-"    // c = (a > 0.5) ? cm : cb; \n" +
-"    // c = cm; \n" +
 "    c = c * a; \n" +
-"    // c += cb; \n" +
-"    // c = mix(cb, cm, a); \n" +
-" \n" +
 " \n" +
 "    vec3 n = vec3(0.0, 1.0, 0.0); \n" +
-" \n" +
 "    float ka = 0.4; \n" +
 "    vec3 li = normalize(uLight); \n" +
 "    float kd = 0.9 * clamp(dot(n, li), 0.0, 1.0); \n" +
-" \n" +
 "    float ks = 1.7 * a * a * a * a * a; \n" +
-" \n" +
 "    c = c * (ka + kd + ks); \n" +
 " \n" +
-"    // c = cb * a; \n" +
-" \n" +
-"    gl_FragColor.xyz = vec3(vuv, 1.0); \n" +
 "    gl_FragColor.xyz = c; \n" +
 "    gl_FragColor.a = 0.85; \n" +
-" \n" +
 "} \n" +
 " \n" 
       params = params || {}

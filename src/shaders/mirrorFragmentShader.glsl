@@ -15,10 +15,6 @@ varying vec4 mirrorCoord;
 varying vec3 vnormal;
 varying vec2 vuv;
 
-float blendOverlay(float base, float blend) {
-    return( base < 0.5 ? ( 2.0 * base * blend ) : (1.0 - 2.0 * ( 1.0 - base ) * ( 1.0 - blend ) ) );
-}
-
 void main() {
 
     float cordNoise1 = 1.2 * snoise(vec3(vuv * 35.0, uTime * 1.9));
@@ -42,10 +38,6 @@ void main() {
     vec4 color = texture2DProj(mirrorSampler, cord);
     color = sum;
     color.z += 0.1;
-    // color = vec4(0.4, 0.7, 0.9, 0.9);
-
-    vec3 mc = vec3(0.7, 0.7, 0.72);
-    // color = vec4(blendOverlay(mc.r, color.r), blendOverlay(mc.g, color.g), blendOverlay(mc.b, color.b), 1.0);
 
     vec3 c = mix(color.xyz, vec3(0.1, 0.5, 0.8), 0.5);
 
@@ -71,39 +63,19 @@ void main() {
     float a4 = sin(ww * vuv.x + wt) * cos(ww * vuv.y + wt) * wa ;
     a4 = (a4 + 1.0) * 0.5;
 
-
     float a =  a4 + a3  + a1;
-
     a /= 3.0;
-
     a = clamp(a,0.0,1.0);
 
-
-    vec3 cb = mc;
-    vec3 cm = color.xyz;
-
-
-    // c = (a > 0.5) ? cm : cb;
-    // c = cm;
     c = c * a;
-    // c += cb;
-    // c = mix(cb, cm, a);
-
 
     vec3 n = vec3(0.0, 1.0, 0.0);
-
     float ka = 0.4;
     vec3 li = normalize(uLight);
     float kd = 0.9 * clamp(dot(n, li), 0.0, 1.0);
-
     float ks = 1.7 * a * a * a * a * a;
-
     c = c * (ka + kd + ks);
 
-    // c = cb * a;
-
-    gl_FragColor.xyz = vec3(vuv, 1.0);
     gl_FragColor.xyz = c;
     gl_FragColor.a = 0.85;
-
 }

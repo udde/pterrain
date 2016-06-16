@@ -12,15 +12,8 @@ void main(){
     float n = 0.5 * snoise(0.000625 * vec3(vpos.x , vpos.y , vpos.z * 6.0 ));
     n += 0.25 * snoise(0.00125 * vpos);
     n += 0.125 * snoise(0.0025 * vpos);
-    // n += snoise(0.000025 * vec3(vpos.x * 40.0, vpos.y * 40.0, vpos.z * 40.0));
-
-    // n /= 0.875;
-
-    // w = mix(b, w , n + 0.5);
-
-    // c = n > 0.1 ? w : b;
+    
     c = mix(b, w, min(n + 0.5, 0.9));
-
 
     gl_FragColor.xyz = c;
     gl_FragColor.a = 0.0;
